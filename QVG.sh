@@ -303,10 +303,39 @@ done
 cd $cdir
 
 
-#annotate vcf
+#annotate vcf with gff3 values
 
 
 #subset fasta genomes by bed region (that is the sequenced region of the genome)
+
+echo "##### Masking of unsequenced positions #####"
+for i in $inds
+do
+	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]]; then
+		samtools faidx ${outdir}/${i}/${i}*.fa #should be the only fasta; if not unexpected behavior may follow, watch out!
+		cut -f 1-2 ${outdir}/${i}/${i}*.fa.fai > ${outdir}/${i}/${i}.genomfile
+		bwa index ${outdir}/${i}/${i}*.fa
+
+		if [[ "$type" == "PE" ]]; then
+			echo "##### Realigning ${i} #####"
+			bwa mem -t $np -R "@RG\tID:$i\tSM:$i\tPL:Illumina" ${outdir}/${i}/${i}*.fa ${outdir}/${i}/${i}_R1.fq.gz ${outdir}/${i}/${i}_R2.fq.gz 2> /dev/null |\
+			samtools view -h -b -u -@ $np |\
+			samtools sort -@ $np > ${outdir}/${i}/realigned.bam
+		elif [[ "$type" == "SE" ]]; then
+			echo "##### Realigning ${i} #####"
+			bwa mem -t $np -R "@RG\tID:$i\tSM:$i\tPL:Illumina" ${outdir}/${i}/${i}*.fa ${outdir}/${i}/${i}_R1.fq.gz 2> /dev/null |\
+			samtools view -h -b -u -@ $np |\
+			samtools sort -@ $np > ${outdir}/${i}/realigned.bam
+		fi
+
+		echo "##### Finding blocks with zero reads #####"
+		bedtools bamtobed -i ${outdir}/${i}/realigned.bam | bedtools merge -i - > ${outdir}/${i}/realigned.bed
+		bedtools complement -i ${outdir}/${i}/realigned.bed -g ${outdir}/${i}/${i}.genomfile > ${outdir}/${i}/complement
+		bedtools maskfasta -fi ${outdir}/${i}/${i}*.fa -bed ${outdir}/${i}/complement -fo ${outdir}/${i}/${i}_masked.fasta
+	fi
+done
+
+find ${outdir}/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_masked_${uniqid}.fa"
 
 echo "Run ended at $(date)"
 #end
