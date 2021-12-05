@@ -130,7 +130,7 @@ done
 
 
 
-depends="fastp bwa samtools sambamba freebayes bcftools vcf2fasta vcfstats" #samtools needs to be at least 1.10!
+depends="fastp bwa samtools sambamba freebayes bcftools vcf2fasta vcfstats bedtools" #samtools needs to be at least 1.10!
 
 for i in $depends
 do
@@ -176,7 +176,7 @@ if [[ ${#indir} -le 1 ]]; then
 fi
 
 if [[ "$type" == "PE" ]]; then
-
+	bwa index $ref_db
 	for i in $inds;
 	do
 		r1=`find $indir -maxdepth 1 -name "${i}*R1*fq.gz" -or -name "${i}*R1*fastq.gz"`
@@ -203,7 +203,7 @@ if [[ "$type" == "PE" ]]; then
 	done
 
 elif [[ "$type" == "SE" ]]; then
-
+	bwa index $ref_db
 	for i in $inds;
 	do
 		r1=`find $indir -maxdepth 1 -name "${i}*R1*fq.gz" -or -name "${i}*R1*fastq.gz"`
