@@ -29,6 +29,9 @@ tf2=10
 tt1=1
 tt2=1
 ml=30
+min_var_qual=10
+min_qual_ao=10
+snpwindow=1000
 
 while [[ "$#" -gt 0 ]];
 	do
@@ -121,6 +124,18 @@ while [[ "$#" -gt 0 ]];
 			altfrac=$2
 			shift
 			;;
+		-mvq|--min-variant-quality)
+			min_var_qual=$2
+			shift
+			;;
+		-mqa|--min-qual-ao)
+			min_qual_ao=$2
+			shift
+			;;
+		-sw|--snp-window)
+			snpwindow=$2
+			shift
+			;;
 		*) echo "Unknown parameter passed: $1"
 			exit 1
 			;;
@@ -130,7 +145,7 @@ done
 
 
 
-depends="fastp bwa samtools sambamba freebayes bcftools vcf2fasta vcfstats bedtools" #samtools needs to be at least 1.10!
+depends="fastp bwa samtools sambamba freebayes bcftools vcf2fasta vcfstats vcffilter vcftools bedtools R Rscript" #samtools needs to be at least 1.10!
 
 for i in $depends
 do
@@ -150,7 +165,7 @@ if [[ ${#ref_db} -le 1 ]]; then
 fi
 
 if [[ ${#slist} -le 1 ]]; then
-	echo "Please specify slist"
+	echo "Please specify samples list"
 	exit 1
 fi
 
@@ -254,6 +269,55 @@ do
 	fi
 done
 
+echo 'args<-commandArgs(TRUE)
+x<-read.table(args[1], sep="\t", header=F)
+name<-paste(args[1], ".png", sep="")
+name<-gsub(".tsv.", ".", name)
+png(name, width=3000, height=1000, unit="px")
+par(mar=rep(5,4))
+plot(x$V3, ylab="Read depth", xlab="Position", type="l", main=args[1], cex.lab=2, cex.axis=2, cex.main=2)
+dev.off()
+
+name2<-paste(args[1], "_log.png", sep="")
+name2<-gsub(".tsv.", ".", name2)
+png(name2, width=3000, height=1000, unit="px")
+par(mar=rep(5,4))
+plot(log(x$V3), ylab="log(read depth)", xlab="Position", type="l", main=args[1], cex.lab=2, cex.axis=2, cex.main=2)
+dev.off()' > ${outdir}/plot_depth.R
+
+cd ${outdir}
+cat  <(find ./ -name "*coverage.tsv" | xargs grep "^#" | head -n 1 | sed -e 's/\/.*:#/sample_id\t/' -e 's/\.//')  <(find ./ -name "*coverage.tsv" | xargs grep -v "^#" | sed -e 's/\.\///' -e 's/\/.*:/\t/') > ${outdir}/coverages.tsv
+cd $cdir
+
+echo 'args<-commandArgs(TRUE)
+x<-read.csv(args[1], sep="\t")
+name<-paste(args[1], ".pdf", sep="")
+name<-gsub(".tsv.", ".", name)
+pdf(name, width=20)
+plot(x$covbases~x$sample_id, las=2, cex=.5, main="covered bases (bp)")
+plot(x$coverage~x$sample_id, las=2, cex=.5, main="% of genome covered")
+plot(x$numreads~x$sample_id, las=2, cex=.5, main="no. of reads")
+plot(x$meandepth~x$sample_id, las=2, cex=.5, main="mean read depth (×)")
+dev.off()' > ${outdir}/plot_coverage.R
+
+
+for i in $inds
+do
+	if [[ -f ${outdir}/${i}/${i}_depth.tsv ]]; then
+		cd ${outdir}/${i}
+		Rscript ${outdir}/plot_depth.R ${i}_depth.tsv &> /dev/null
+		echo "##### #####"  #COMMENT
+	fi
+done
+
+if [[ -f ${outdir}/coverages.tsv ]]; then
+	cd ${outdir}
+	Rscript ${outdir}/plot_coverage.R coverages.tsv &> /dev/null
+fi
+
+echo "##### Summary figure of coverage information for samples can be found in ${outdir}/coverages.pdf #####"
+
+cd $cdir
 
 echo "##### Calling variant sites using $np parallel threads with ploidy set to ${ploidy}. Threads are split by sample files. #####"
 
@@ -266,12 +330,38 @@ done | parallel -j $np
 
 for i in $inds
 do
+	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
+		vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" ${outdir}/${i}/${i}_p${ploidy}.vcf > ${outdir}/${i}/${i}_p${ploidy}_filt.vcf
+		mv ${outdir}/${i}/${i}_p${ploidy}_filt.vcf ${outdir}/${i}/${i}_p${ploidy}.vcf 
+		vcftools --vcf ${outdir}/${i}/${i}_p${ploidy}.vcf  --SNPdensity ${snpwindow} --out ${outdir}/${i}/${i}_SNPdensity 2> /dev/null
+	fi
+done
+
+for i in $inds
+do
 	if [[ -f ${outdir}/${i}/${i}_p${ploidy}.vcf ]]; then
 		vcfstats ${outdir}/${i}/${i}_p${ploidy}.vcf > ${outdir}/${i}/${i}_vcfstats_p${ploidy}.txt
 		echo "##### vcf statistics can be found at ${outdir}/${i}/${i}_vcfstats_p${ploidy}.txt #####"
-		cd ${outdir}/${i}/
+		cd ${outdir}/${i}
 		vcf2fasta -f $ref_db ${i}_p${ploidy}.vcf
 		bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' ${i}_p${ploidy}.vcf > ${i}_p${ploidy}_GT.tsv 2> /dev/null
+	fi
+done
+
+echo 'args<-commandArgs(TRUE)
+x<-read.csv(args[1], sep="\t")
+name<-paste(args[1], ".pdf", sep="")
+name<-gsub(".tsv.", ".", name)
+pdf(name, width=20)
+plot(x$VARIANTS.KB~x$BIN_START, type="l", main=args[1])
+dev.off()' > ${outdir}/plot_density.R
+
+for i in $inds
+do
+	if [[ -f ${outdir}/${i}/${i}_SNPdensity.snpden ]]; then
+		cd ${outdir}/${i}
+		Rscript ${outdir}/plot_density.R ${i}_SNPdensity.snpden &> /dev/null
+		echo "##### #####"  #COMMENT
 	fi
 done
 
@@ -292,6 +382,14 @@ done | parallel -j $np
 
 for i in $inds
 do
+	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
+		vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" ${outdir}/${i}/${i}_pooled.vcf > ${outdir}/${i}/${i}_pooled_filt.vcf
+		mv ${outdir}/${i}/${i}_pooled_filt.vcf ${outdir}/${i}/${i}_pooled.vcf
+	fi
+done
+
+for i in $inds
+do
 	if [[ -f ${outdir}/${i}/${i}_pooled.vcf ]]; then
 		vcfstats ${outdir}/${i}/${i}_pooled.vcf > ${outdir}/${i}/${i}_vcfstats_pooled.txt
 		echo "##### vcf statistics can be found at ${outdir}/${i}/${i}_vcfstats_pooled.txt #####"
@@ -300,15 +398,33 @@ do
 	fi
 done
 
+echo 'args<-commandArgs(TRUE)
+x<-read.csv(args[1], sep="\t")
+#head(x)
+name<-paste(args[1], ".pdf", sep="")
+name<-gsub(".tsv.", ".", name)
+pdf(name, width=20)
+hist(x$X.5.AB, main=args[1], xlab="Allele balance")
+dev.off()' > ${outdir}/plot_AB.R
+
+for i in $inds
+do
+	if [[ -f ${outdir}/${i}/${i}_pooled_GT.tsv ]]; then
+		cd ${outdir}/${i}
+		Rscript ${outdir}/plot_AB.R ${i}_pooled_GT.tsv &> /dev/null
+		echo "##### #####"  #COMMENT
+	fi
+done
+
 cd $cdir
 
+#annotate vcf with gff3 values, show variants annotations
+#create pdfs
 
-#annotate vcf with gff3 values
+echo "##### Exporting distribution of sites with more than one allele across samples to ${outdir}/non_haploid_sites.txt #####"
+find ${outdir} -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > ${outdir}/non_haploid_sites.txt
 
-
-#subset fasta genomes by bed region (that is the sequenced region of the genome)
-
-echo "##### Masking of unsequenced positions #####"
+echo "##### Masking of unsequenced positions in the consensus fasta files. #####"
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]]; then
@@ -336,6 +452,8 @@ do
 done
 
 find ${outdir}/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_masked_${uniqid}.fa"
+
+rm ${outdir}/plot*R
 
 echo "Run ended at $(date)"
 #end
