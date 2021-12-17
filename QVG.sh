@@ -32,6 +32,7 @@ ml=30
 min_var_qual=10
 min_qual_ao=10
 snpwindow=1000
+mincov=95
 
 while [[ "$#" -gt 0 ]];
 	do
@@ -134,6 +135,10 @@ while [[ "$#" -gt 0 ]];
 			;;
 		-sw|--snp-window)
 			snpwindow=$2
+			shift
+			;;
+		-mc|--mincov)
+			mincov=$2
 			shift
 			;;
 		*) echo "Unknown parameter passed: $1"
@@ -287,6 +292,12 @@ dev.off()' > ${outdir}/plot_depth.R
 
 cd ${outdir}
 cat  <(find ./ -name "*coverage.tsv" | xargs grep "^#" | head -n 1 | sed -e 's/\/.*:#/sample_id\t/' -e 's/\.//')  <(find ./ -name "*coverage.tsv" | xargs grep -v "^#" | sed -e 's/\.\///' -e 's/\/.*:/\t/') > ${outdir}/coverages.tsv
+
+slist_filt=`awk -v mc=$mincov '$7 > mc' ${outdir}/coverages.tsv | cut -f 1 | grep -v "sample_id"`
+echo "The following samples cover at least ${mincov} % of the reference genome"
+echo "$slist_filt"
+inds=$slist_filt
+
 cd $cdir
 
 echo 'args<-commandArgs(TRUE)
@@ -300,19 +311,20 @@ plot(x$numreads~x$sample_id, las=2, cex=.5, main="no. of reads")
 plot(x$meandepth~x$sample_id, las=2, cex=.5, main="mean read depth (×)")
 dev.off()' > ${outdir}/plot_coverage.R
 
-
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_depth.tsv ]]; then
 		cd ${outdir}/${i}
 		Rscript ${outdir}/plot_depth.R ${i}_depth.tsv &> /dev/null
-		echo "##### #####"  #COMMENT
+		echo "##### Plotting read depth distribution of ${i} #####"  #COMMENT
 	fi
 done
 
 if [[ -f ${outdir}/coverages.tsv ]]; then
 	cd ${outdir}
 	Rscript ${outdir}/plot_coverage.R coverages.tsv &> /dev/null
+	echo "##### Plotting coverage statistics #####"  #COMMENT
+
 fi
 
 echo "##### Summary figure of coverage information for samples can be found in ${outdir}/coverages.pdf #####"
@@ -361,7 +373,7 @@ do
 	if [[ -f ${outdir}/${i}/${i}_SNPdensity.snpden ]]; then
 		cd ${outdir}/${i}
 		Rscript ${outdir}/plot_density.R ${i}_SNPdensity.snpden &> /dev/null
-		echo "##### #####"  #COMMENT
+		echo "##### Plotting SNP density distribution of ${i} #####"  #COMMENT
 	fi
 done
 
@@ -373,11 +385,12 @@ find ${outdir}/*/*.fa | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samp
 
 echo "##### Calling variant sites using $np parallel threads assuming pooled sequencing. Threads are split by sample files. #####"
 
+
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
-		echo "freebayes -f $ref_db -b ${outdir}/${i}/${i}_markdup.bam -n $nbest --min-coverage $fb_min_cov -K -F $altfrac -q $minqual -Q $mismatchqual -m $mapq -w -V -a -j -E -1 > ${outdir}/${i}/${i}_pooled.vcf"
-	fi	
+		echo "freebayes -f $ref_db -b ${outdir}/${i}/${i}_markdup.bam -n $nbest --min-coverage $fb_min_cov --pooled-continuous -F $altfrac -q $minqual -Q $mismatchqual -m $mapq -w -V -a -j -E -1 > ${outdir}/${i}/${i}_pooled.vcf"
+	fi
 done | parallel -j $np
 
 for i in $inds
@@ -400,7 +413,7 @@ done
 
 echo 'args<-commandArgs(TRUE)
 x<-read.csv(args[1], sep="\t")
-#head(x)
+head(x)
 name<-paste(args[1], ".pdf", sep="")
 name<-gsub(".tsv.", ".", name)
 pdf(name, width=20)
@@ -412,21 +425,21 @@ do
 	if [[ -f ${outdir}/${i}/${i}_pooled_GT.tsv ]]; then
 		cd ${outdir}/${i}
 		Rscript ${outdir}/plot_AB.R ${i}_pooled_GT.tsv &> /dev/null
-		echo "##### #####"  #COMMENT
+		echo "##### Plotting AB distribution of ${i} #####"  #COMMENT
 	fi
 done
 
 cd $cdir
 
 #annotate vcf with gff3 values, show variants annotations
-#create pdfs
 
 echo "##### Exporting distribution of sites with more than one allele across samples to ${outdir}/non_haploid_sites.txt #####"
-find ${outdir} -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > ${outdir}/non_haploid_sites.txt
+find ${outdir} -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > ${outdir}/non_haploid_sites.txt # instead check for allele balance and export sites with AB > 0
 
 echo "##### Masking of unsequenced positions in the consensus fasta files. #####"
 for i in $inds
 do
+	echo $i
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]]; then
 		samtools faidx ${outdir}/${i}/${i}*.fa #should be the only fasta; if not unexpected behavior may follow, watch out!
 		cut -f 1-2 ${outdir}/${i}/${i}*.fa.fai > ${outdir}/${i}/${i}.genomfile
