@@ -293,7 +293,7 @@ dev.off()' > ${outdir}/plot_depth.R
 cd ${outdir}
 cat  <(find ./ -name "*coverage.tsv" | xargs grep "^#" | head -n 1 | sed -e 's/\/.*:#/sample_id\t/' -e 's/\.//')  <(find ./ -name "*coverage.tsv" | xargs grep -v "^#" | sed -e 's/\.\///' -e 's/\/.*:/\t/') > ${outdir}/coverages.tsv
 
-slist_filt=`awk -v mc=$mincov '$7 > mc' ${outdir}/coverages.tsv | cut -f 1 | grep -v "sample_id"`
+slist_filt=`awk -v mincovc=$mincov '$7 > mincov' ${outdir}/coverages.tsv | cut -f 1 | grep -v "sample_id"`
 echo "The following samples cover at least ${mincov} % of the reference genome"
 echo "$slist_filt"
 inds=$slist_filt
