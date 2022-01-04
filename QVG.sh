@@ -137,7 +137,7 @@ while [[ "$#" -gt 0 ]];
 			snpwindow=$2
 			shift
 			;;
-		-mc|--mincov)
+		-mincov|--mincov)
 			mincov=$2
 			shift
 			;;
