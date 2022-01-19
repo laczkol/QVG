@@ -1,0 +1,18 @@
+name: QVG_env
+channels:
+  - anaconda
+  - bioconda
+  - r
+  - conda-forge
+  - defaults
+dependencies:
+  - fastp=0.20.1
+  - bwa=0.7.17
+  - samtools=1.10
+  - sambamba=0.7.1
+  - freebayes=1.0.2
+  - bcftools=1.8
+  - bedtools=2.26.0
+  - vcflib=1.0.2
+  - vcftools=0.1.16
+  - r-base=3.6.3
