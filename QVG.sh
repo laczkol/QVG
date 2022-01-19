@@ -464,6 +464,10 @@ done
 
 find ${outdir}/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_masked_${uniqid}.fa"
 
+find ${outdir} -name "complement" | xargs rm 
+find ${outdir} -name "realigned.bam" | xargs rm 
+find ${outdir} -name "realigned.bed" | xargs rm 
+
 rm ${outdir}/plot*R
 
 echo "Run ended at $(date)"
