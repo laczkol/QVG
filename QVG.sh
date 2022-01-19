@@ -165,7 +165,7 @@ do
 done
 
 if [[ ${#ref_db} -le 1 ]]; then
-	echo "Please specify ref_dberence genome"
+	echo "Please specify reference genome"
 	exit 1
 fi
 
