@@ -45,7 +45,7 @@ while [[ "$#" -gt 0 ]];
 			outdir="$2" #output directory, USE ABSOLUTE PATH
 			shift
 			;;
-		-r|--ref_dberence-genome) #ref_dberence genome in fasta, MANDATORY
+		-r|--reference-genome) #ref_dberence genome in fasta, MANDATORY
 			ref_db=$2
 			shift
 			;;
