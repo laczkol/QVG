@@ -431,8 +431,6 @@ done
 
 cd $cdir
 
-#annotate vcf with gff3 values, show variants annotations
-
 echo "##### Exporting distribution of sites with more than one allele across samples to ${outdir}/non_haploid_sites.txt #####"
 find ${outdir} -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > ${outdir}/non_haploid_sites.txt # instead check for allele balance and export sites with AB > 0
 
