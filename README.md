@@ -38,7 +38,7 @@ Dependencies are the following:
 
 - [R](https://www.r-project.org/) and [Rscript](https://rdrr.io/r/utils/Rscript.html) for visualization
 
-- [parallel](https://www.gnu.org/software/parallel/) to run tasks in parallel
+- [GNU parallel](https://www.gnu.org/software/parallel/) to run tasks in parallel
 
 - [GNU Core Utilities](https://www.gnu.org/software/coreutils/) is practically the spine of the pipeline. It is used in the majority of `bash` scripts and should be preinstalled on most of the GNU/Linux-based operating systems.
 
