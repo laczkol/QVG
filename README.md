@@ -19,21 +19,33 @@ With dependencies installed and added to the `$PATH` variable, QVG can be instal
 Dependencies are the following:
 
 - [fastp](https://github.com/OpenGene/fastp) for filtering the raw reads
+
 - [bwa](http://bio-bwa.sourceforge.net/) to align the short reads to a reference genome
+
 - [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics
+
 - [sambamba](https://lomereiter.github.io/sambamba/) to mark duplicate alignments
+
 - [freebayes](https://github.com/freebayes/freebayes) for variant calling
+
 - [bcftools](https://samtools.github.io/bcftools/bcftools.html) to export variants and allele balance in tabular format
+
 - vcf2fasta, vcfstats and vcffilter from the [vcflib](https://github.com/vcflib/vcflib) for file conversion, exporting vcf statistics and variant filtering
+
 - [vcftools](http://vcftools.sourceforge.net/) to filter for missingness
+
 - [bedtools](https://bedtools.readthedocs.io/en/latest/) to mask the genomic regions with no reads
+
 - [R](https://www.r-project.org/) and [Rscript](https://rdrr.io/r/utils/Rscript.html) for visualization
+
 - [GNU Core Utilities](https://www.gnu.org/software/coreutils/) is practically the spine of the pipeline. It is used in the majority of `bash` scripts and should be preinstalled on most of the GNU/Linux-based operating systems.
 
-After cloning this repository, using the `conda` package manager dependencies can be installed by copying this line into the terminal:
-````bash
-conda env create -f qvg-env.yaml 
-````
+  After cloning this repository, using the `conda` package manager dependencies can be installed by copying this line into the terminal:
+
+  ```
+  conda env create -f qvg-env.yaml 
+  ```
+
 ## Details
 
 The pipeline can parametrized from the command line. The two mandatory options to run the pipeline are the following:
