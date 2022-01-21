@@ -183,12 +183,12 @@ fi
 
 outdir=`realpath $outdir`
 
-ref_db=`realpath $ref_db`
+ref_db=`realpath "$ref_db"`
 
-inds=`cut -f 1 $slist | sort`
+inds=$(cut -f 1 "$slist" | sort)
 
 echo "List of samples:"
-cat $slist
+cat "$slist"
 
 if [[ ${#indir} -le 1 ]]; then
 	echo "Please specify input directory of reads to be aligned"
@@ -196,55 +196,55 @@ if [[ ${#indir} -le 1 ]]; then
 fi
 
 if [[ "$type" == "PE" ]]; then
-	bwa index $ref_db
+	bwa index "$ref_db"
 	for i in $inds;
 	do
-		r1=`find $indir -maxdepth 1 -name "${i}*R1*fq.gz" -or -name "${i}*R1*fastq.gz"`
-		r2=`find $indir -maxdepth 1 -name "${i}*R2*fq.gz" -or -name "${i}*R2*fastq.gz"`
+		r1=$(find "$indir" -maxdepth 1 -name "${i}*R1*fq.gz" -or -name "${i}*R1*fastq.gz")
+		r2=$(find "$indir" -maxdepth 1 -name "${i}*R2*fq.gz" -or -name "${i}*R2*fastq.gz")
 
 		if [[ ! -d "${outdir}/${i}" ]]; then
-			mkdir ${outdir}/${i}
+			mkdir "${outdir}"/"${i}"
 		fi
 
-		fsize=`gzip -l $r1 | awk 'NR==2 {print $2}'`
+		fsize=$(gzip -l "$r1" | awk 'NR==2 {print $2}')
 
 		if [[ $fsize -gt 0 ]]; then
 			echo "##### Filtering ${i} #####"
-			fastp -i $r1 -I $r2 -o ${outdir}/${i}/${i}_R1.fq.gz -O ${outdir}/${i}/${i}_R2.fq.gz -5 20 -3 20 -W 10 -M 20 --detect_adapter_for_pe -w $np -x -f $tf1 -F $tf2 -t $tt1 -T $tt2 -l $ml -h ${outdir}/${i}/${i}_filter.html -j ${outdir}/${i}/${i}_filter.json
+			fastp -i "$r1" -I "$r2" -o "${outdir}"/"${i}"/"${i}"_R1.fq.gz -O "${outdir}"/"${i}"/"${i}"_R2.fq.gz -5 20 -3 20 -W 10 -M 20 --detect_adapter_for_pe -w "$np" -x -f "$tf1" -F "$tf2" -t "$tt1" -T "$tt2" -l "$ml" -h "${outdir}"/"${i}"/"${i}"_filter.html -j "${outdir}"/"${i}"/"${i}"_filter.json
 
 			echo "##### Aligning ${i} to $ref_db #####"
-			bwa mem -t $np -R "@RG\tID:$i\tSM:$i\tPL:Illumina" $ref_db ${outdir}/${i}/${i}_R1.fq.gz ${outdir}/${i}/${i}_R2.fq.gz 2> /dev/null |\
-			samtools view -h -b -u -@ $np |\
-			samtools sort -@ $np > ${outdir}/${i}/${i}.bam
+			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz "${outdir}"/"${i}"/"${i}"_R2.fq.gz 2> /dev/null |\
+			samtools view -h -b -u -@ "$np" |\
+			samtools sort -@ "$np" > "${outdir}"/"${i}"/"${i}".bam
 		else
 			echo "##### Sample file ${i} is empty #####"
-			rm -r ${outdir}/${i}
+			rm -r "${outdir}"/"${i}"
 		fi
 	done
 
 elif [[ "$type" == "SE" ]]; then
-	bwa index $ref_db
+	bwa index "$ref_db"
 	for i in $inds;
 	do
-		r1=`find $indir -maxdepth 1 -name "${i}*R1*fq.gz" -or -name "${i}*R1*fastq.gz"`
+		r1=$(find "$indir" -maxdepth 1 -name "${i}*R1*fq.gz" -or -name "${i}*R1*fastq.gz")
 	
 		if [[ ! -d "${outdir}/${i}" ]]; then
-			mkdir ${outdir}/${i}
+			mkdir "${outdir}"/"${i}"
 		fi
 
-		fsize=`gzip -l $r1 | awk 'NR==2 {print $2}'`
+		fsize=$(gzip -l "$r1" | awk 'NR==2 {print $2}')
 
 		if [[ $fsize -gt 0 ]]; then
 			echo "##### Filtering ${i} #####"
-			fastp -i $r1 -o ${outdir}/${i}/${i}_R1.fq.gz -5 20 -3 20 -W 10 -M 20 -w $np -x -f 10 -t 1 -l 30 -h ${outdir}/${i}/${i}_filter.html -j ${outdir}/${i}/${i}_filter.json
+			fastp -i "$r1" -o "${outdir}"/"${i}"/"${i}"_R1.fq.gz -5 20 -3 20 -W 10 -M 20 -w "$np" -x -f 10 -t 1 -l 30 -h "${outdir}"/"${i}"/"${i}"_filter.html -j "${outdir}"/"${i}"/"${i}"_filter.json
 
 			echo "##### Aligning ${i} to $ref_db #####"
-			bwa mem -t $np -R "@RG\tID:$i\tSM:$i\tPL:Illumina" $ref_db ${outdir}/${i}/${i}_R1.fq.gz 2> /dev/null |\
-			samtools view -h -b -u -@ $np |\
-			samtools sort -@ $np > ${outdir}/${i}/${i}.bam
+			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz 2> /dev/null |\
+			samtools view -h -b -u -@ "$np" |\
+			samtools sort -@ "$np" > "${outdir}"/"${i}"/"${i}".bam
 		else
 			echo "##### Sample file ${i} is empty #####"
-			rm -r ${outdir}/${i}
+			rm -r "${outdir}"/"${i}"
 		fi
 	done
 
@@ -257,19 +257,19 @@ do
 
 	if [[ -f ${outdir}/${i}/${i}.bam ]]; then
 		echo "##### Marking duplicate reads of ${i} #####"
-		sambamba markdup -p -t $np ${outdir}/${i}/${i}.bam ${outdir}/${i}/${i}_markdup.bam
+		sambamba markdup -p -t "$np" "${outdir}"/"${i}"/"${i}".bam "${outdir}"/"${i}"/"${i}"_markdup.bam
 
 		echo "##### Running basic statistics on the alignments of ${i} with samtools #####"	
 		
-		echo "samtools coverage -m ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_coverage.txt" | parallel -j $np
+		echo "samtools coverage -m ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_coverage.txt" | parallel -j "$np"
 		echo "##### Coverage information for ${i} in histogram (samtools coverage -m) format can be found in ${outdir}/${i}/${i}_coverage.txt #####" 
-		echo "samtools coverage ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_coverage.tsv" | parallel -j $np
+		echo "samtools coverage ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_coverage.tsv" | parallel -j "$np"
 		echo "##### Coverage information for ${i} in tabular format can be found in ${outdir}/${i}/${i}_coverage.tsv #####"
-		echo "samtools depth -d 0 ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_depth.tsv" | parallel -j $np
+		echo "samtools depth -d 0 ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_depth.tsv" | parallel -j "$np"
 		echo "##### Read depth of each position of ${i} in tabular format can be found in ${outdir}/${i}/${i}_depth.tsv #####"
-		echo "samtools flagstat ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_flagstat.txt" | parallel -j $np
+		echo "samtools flagstat ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_flagstat.txt" | parallel -j "$np"
 		echo "##### Simple statistics of ${i} (samtools flagstat) can be found in ${outdir}/${i}/${i}_flagstat.txt #####"
-		echo "samtools idxstats ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_idxstats.tsv" | parallel -j $np
+		echo "samtools idxstats ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_idxstats.tsv" | parallel -j "$np"
 		echo "##### BAM index statistics of ${i} can be found in ${outdir}/${i}/${i}_idxstats.tsv #####"
 	fi
 done
@@ -288,17 +288,17 @@ name2<-gsub(".tsv.", ".", name2)
 png(name2, width=3000, height=1000, unit="px")
 par(mar=rep(5,4))
 plot(log(x$V3), ylab="log(read depth)", xlab="Position", type="l", main=args[1], cex.lab=2, cex.axis=2, cex.main=2)
-dev.off()' > ${outdir}/plot_depth.R
+dev.off()' > "${outdir}"/plot_depth.R
 
-cd ${outdir}
-cat  <(find ./ -name "*coverage.tsv" | xargs grep "^#" | head -n 1 | sed -e 's/\/.*:#/sample_id\t/' -e 's/\.//')  <(find ./ -name "*coverage.tsv" | xargs grep -v "^#" | sed -e 's/\.\///' -e 's/\/.*:/\t/') > ${outdir}/coverages.tsv
+cd "${outdir}"
+cat  <(find ./ -name "*coverage.tsv" | xargs grep "^#" | head -n 1 | sed -e 's/\/.*:#/sample_id\t/' -e 's/\.//')  <(find ./ -name "*coverage.tsv" | xargs grep -v "^#" | sed -e 's/\.\///' -e 's/\/.*:/\t/') > "${outdir}"/coverages.tsv
 
-slist_filt=`awk -v mincovc=$mincov '$7 > mincov' ${outdir}/coverages.tsv | cut -f 1 | grep -v "sample_id"`
+slist_filt=$(awk -v mincovc="$mincov" '$7 > mincov' "${outdir}"/coverages.tsv | cut -f 1 | grep -v "sample_id")
 echo "The following samples cover at least ${mincov} % of the reference genome"
 echo "$slist_filt"
 inds=$slist_filt
 
-cd $cdir
+cd "$cdir"
 
 echo 'args<-commandArgs(TRUE)
 x<-read.csv(args[1], sep="\t")
@@ -309,27 +309,27 @@ plot(x$covbases~x$sample_id, las=2, cex=.5, main="covered bases (bp)")
 plot(x$coverage~x$sample_id, las=2, cex=.5, main="% of genome covered")
 plot(x$numreads~x$sample_id, las=2, cex=.5, main="no. of reads")
 plot(x$meandepth~x$sample_id, las=2, cex=.5, main="mean read depth (×)")
-dev.off()' > ${outdir}/plot_coverage.R
+dev.off()' > "${outdir}"/plot_coverage.R
 
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_depth.tsv ]]; then
-		cd ${outdir}/${i}
-		Rscript ${outdir}/plot_depth.R ${i}_depth.tsv &> /dev/null
+		cd "${outdir}"/"${i}"
+		Rscript "${outdir}"/plot_depth.R "${i}"_depth.tsv &> /dev/null
 		echo "##### Plotting read depth distribution of ${i} #####"  #COMMENT
 	fi
 done
 
 if [[ -f ${outdir}/coverages.tsv ]]; then
-	cd ${outdir}
-	Rscript ${outdir}/plot_coverage.R coverages.tsv &> /dev/null
+	cd "${outdir}"
+	Rscript "${outdir}"/plot_coverage.R coverages.tsv &> /dev/null
 	echo "##### Plotting coverage statistics #####"  #COMMENT
 
 fi
 
 echo "##### Summary figure of coverage information for samples can be found in ${outdir}/coverages.pdf #####"
 
-cd $cdir
+cd "$cdir"
 
 echo "##### Calling variant sites using $np parallel threads with ploidy set to ${ploidy}. Threads are split by sample files. #####"
 
@@ -338,25 +338,25 @@ do
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
 		echo "freebayes -f $ref_db -b ${outdir}/${i}/${i}_markdup.bam -n $nbest --min-coverage $fb_min_cov --ploidy $ploidy -F $altfrac -q $minqual -Q $mismatchqual -m $mapq -w -V -a -j -E -1 > ${outdir}/${i}/${i}_p${ploidy}.vcf"
 	fi
-done | parallel -j $np
+done | parallel -j "$np"
 
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
-		vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" ${outdir}/${i}/${i}_p${ploidy}.vcf > ${outdir}/${i}/${i}_p${ploidy}_filt.vcf
-		mv ${outdir}/${i}/${i}_p${ploidy}_filt.vcf ${outdir}/${i}/${i}_p${ploidy}.vcf 
-		vcftools --vcf ${outdir}/${i}/${i}_p${ploidy}.vcf  --SNPdensity ${snpwindow} --out ${outdir}/${i}/${i}_SNPdensity 2> /dev/null
+		vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf > "${outdir}"/"${i}"/"${i}"_p"${ploidy}"_filt.vcf
+		mv "${outdir}"/"${i}"/"${i}"_p"${ploidy}"_filt.vcf "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf 
+		vcftools --vcf "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf  --SNPdensity "${snpwindow}" --out "${outdir}"/"${i}"/"${i}"_SNPdensity 2> /dev/null
 	fi
 done
 
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_p${ploidy}.vcf ]]; then
-		vcfstats ${outdir}/${i}/${i}_p${ploidy}.vcf > ${outdir}/${i}/${i}_vcfstats_p${ploidy}.txt
+		vcfstats "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf > "${outdir}"/"${i}"/"${i}"_vcfstats_p"${ploidy}".txt
 		echo "##### vcf statistics can be found at ${outdir}/${i}/${i}_vcfstats_p${ploidy}.txt #####"
-		cd ${outdir}/${i}
-		vcf2fasta -f $ref_db ${i}_p${ploidy}.vcf
-		bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' ${i}_p${ploidy}.vcf > ${i}_p${ploidy}_GT.tsv 2> /dev/null
+		cd "${outdir}"/"${i}"
+		vcf2fasta -f "$ref_db" "${i}"_p"${ploidy}".vcf
+		bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' "${i}"_p"${ploidy}".vcf > "${i}"_p"${ploidy}"_GT.tsv 2> /dev/null
 	fi
 done
 
@@ -366,22 +366,22 @@ name<-paste(args[1], ".pdf", sep="")
 name<-gsub(".tsv.", ".", name)
 pdf(name, width=20)
 plot(x$VARIANTS.KB~x$BIN_START, type="l", main=args[1])
-dev.off()' > ${outdir}/plot_density.R
+dev.off()' > "${outdir}"/plot_density.R
 
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_SNPdensity.snpden ]]; then
-		cd ${outdir}/${i}
-		Rscript ${outdir}/plot_density.R ${i}_SNPdensity.snpden &> /dev/null
+		cd "${outdir}"/"${i}"
+		Rscript "${outdir}"/plot_density.R "${i}"_SNPdensity.snpden &> /dev/null
 		echo "##### Plotting SNP density distribution of ${i} #####"  #COMMENT
 	fi
 done
 
-cd $cdir
+cd "$cdir"
 
-uniqid=`date | sed -e 's/ /_/g' -e 's/\.//g' -e 's/,//g' | cut -f 1,2,3,5 -d_`
+uniqid=$(date | sed -e 's/ /_/g' -e 's/\.//g' -e 's/,//g' | cut -f 1,2,3,5 -d_)
 
-find ${outdir}/*/*.fa | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_${uniqid}.fa"
+find "${outdir}"/*/*.fa | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_${uniqid}.fa"
 
 echo "##### Calling variant sites using $np parallel threads assuming pooled sequencing. Threads are split by sample files. #####"
 
@@ -391,23 +391,23 @@ do
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
 		echo "freebayes -f $ref_db -b ${outdir}/${i}/${i}_markdup.bam -n $nbest --min-coverage $fb_min_cov --pooled-continuous -F $altfrac -q $minqual -Q $mismatchqual -m $mapq -w -V -a -j -E -1 > ${outdir}/${i}/${i}_pooled.vcf"
 	fi
-done | parallel -j $np
+done | parallel -j "$np"
 
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
-		vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" ${outdir}/${i}/${i}_pooled.vcf > ${outdir}/${i}/${i}_pooled_filt.vcf
-		mv ${outdir}/${i}/${i}_pooled_filt.vcf ${outdir}/${i}/${i}_pooled.vcf
+		vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" "${outdir}"/"${i}"/"${i}"_pooled.vcf > "${outdir}"/"${i}"/"${i}"_pooled_filt.vcf
+		mv "${outdir}"/"${i}"/"${i}"_pooled_filt.vcf "${outdir}"/"${i}"/"${i}"_pooled.vcf
 	fi
 done
 
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_pooled.vcf ]]; then
-		vcfstats ${outdir}/${i}/${i}_pooled.vcf > ${outdir}/${i}/${i}_vcfstats_pooled.txt
+		vcfstats "${outdir}"/"${i}"/"${i}"_pooled.vcf > "${outdir}"/"${i}"/"${i}"_vcfstats_pooled.txt
 		echo "##### vcf statistics can be found at ${outdir}/${i}/${i}_vcfstats_pooled.txt #####"
-		cd ${outdir}/${i}/
-		bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' ${i}_pooled.vcf > ${i}_pooled_GT.tsv 2> /dev/null
+		cd "${outdir}"/"${i}"/
+		bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' "${i}"_pooled.vcf > "${i}"_pooled_GT.tsv 2> /dev/null
 	fi
 done
 
@@ -418,57 +418,57 @@ name<-paste(args[1], ".pdf", sep="")
 name<-gsub(".tsv.", ".", name)
 pdf(name, width=20)
 hist(x$X.5.AB, main=args[1], xlab="Allele balance")
-dev.off()' > ${outdir}/plot_AB.R
+dev.off()' > "${outdir}"/plot_AB.R
 
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_pooled_GT.tsv ]]; then
-		cd ${outdir}/${i}
-		Rscript ${outdir}/plot_AB.R ${i}_pooled_GT.tsv &> /dev/null
+		cd "${outdir}"/"${i}"
+		Rscript "${outdir}"/plot_AB.R "${i}"_pooled_GT.tsv &> /dev/null
 		echo "##### Plotting AB distribution of ${i} #####"  #COMMENT
 	fi
 done
 
-cd $cdir
+cd "$cdir"
 
 echo "##### Exporting distribution of sites with more than one allele across samples to ${outdir}/non_haploid_sites.txt #####"
-find ${outdir} -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > ${outdir}/non_haploid_sites.txt # instead check for allele balance and export sites with AB > 0
+find "${outdir}" -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > "${outdir}"/non_haploid_sites.txt # instead check for allele balance and export sites with AB > 0
 
 echo "##### Masking of unsequenced positions in the consensus fasta files. #####"
 for i in $inds
 do
-	echo $i
+	echo "$i"
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]]; then
-		samtools faidx ${outdir}/${i}/${i}*.fa #should be the only fasta; if not unexpected behavior may follow, watch out!
-		cut -f 1-2 ${outdir}/${i}/${i}*.fa.fai > ${outdir}/${i}/${i}.genomfile
-		bwa index ${outdir}/${i}/${i}*.fa
+		samtools faidx "${outdir}"/"${i}"/"${i}"*.fa #should be the only fasta; if not unexpected behavior may follow, watch out!
+		cut -f 1-2 "${outdir}"/"${i}"/"${i}"*.fa.fai > "${outdir}"/"${i}"/"${i}".genomfile
+		bwa index "${outdir}"/"${i}"/"${i}"*.fa
 
 		if [[ "$type" == "PE" ]]; then
 			echo "##### Realigning ${i} #####"
-			bwa mem -t $np -R "@RG\tID:$i\tSM:$i\tPL:Illumina" ${outdir}/${i}/${i}*.fa ${outdir}/${i}/${i}_R1.fq.gz ${outdir}/${i}/${i}_R2.fq.gz 2> /dev/null |\
-			samtools view -h -b -u -@ $np |\
-			samtools sort -@ $np > ${outdir}/${i}/realigned.bam
+			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "${outdir}"/"${i}"/"${i}"*.fa "${outdir}"/"${i}"/"${i}"_R1.fq.gz "${outdir}"/"${i}"/"${i}"_R2.fq.gz 2> /dev/null |\
+			samtools view -h -b -u -@ "$np" |\
+			samtools sort -@ "$np" > "${outdir}"/"${i}"/realigned.bam
 		elif [[ "$type" == "SE" ]]; then
 			echo "##### Realigning ${i} #####"
-			bwa mem -t $np -R "@RG\tID:$i\tSM:$i\tPL:Illumina" ${outdir}/${i}/${i}*.fa ${outdir}/${i}/${i}_R1.fq.gz 2> /dev/null |\
-			samtools view -h -b -u -@ $np |\
-			samtools sort -@ $np > ${outdir}/${i}/realigned.bam
+			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "${outdir}"/"${i}"/"${i}"*.fa "${outdir}"/"${i}"/"${i}"_R1.fq.gz 2> /dev/null |\
+			samtools view -h -b -u -@ "$np" |\
+			samtools sort -@ "$np" > "${outdir}"/"${i}"/realigned.bam
 		fi
 
 		echo "##### Finding blocks with zero reads #####"
-		bedtools bamtobed -i ${outdir}/${i}/realigned.bam | bedtools merge -i - > ${outdir}/${i}/realigned.bed
-		bedtools complement -i ${outdir}/${i}/realigned.bed -g ${outdir}/${i}/${i}.genomfile > ${outdir}/${i}/complement
-		bedtools maskfasta -fi ${outdir}/${i}/${i}*.fa -bed ${outdir}/${i}/complement -fo ${outdir}/${i}/${i}_masked.fasta
+		bedtools bamtobed -i "${outdir}"/"${i}"/realigned.bam | bedtools merge -i - > "${outdir}"/"${i}"/realigned.bed
+		bedtools complement -i "${outdir}"/"${i}"/realigned.bed -g "${outdir}"/"${i}"/"${i}".genomfile > "${outdir}"/"${i}"/complement
+		bedtools maskfasta -fi "${outdir}"/"${i}"/"${i}"*.fa -bed "${outdir}"/"${i}"/complement -fo "${outdir}"/"${i}"/"${i}"_masked.fasta
 	fi
 done
 
-find ${outdir}/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_masked_${uniqid}.fa"
+find "${outdir}"/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_masked_${uniqid}.fa"
 
-find ${outdir} -name "complement" | xargs rm 
-find ${outdir} -name "realigned.bam" | xargs rm 
-find ${outdir} -name "realigned.bed" | xargs rm 
+find "${outdir}" -name "complement" | xargs rm 
+find "${outdir}" -name "realigned.bam" | xargs rm 
+find "${outdir}" -name "realigned.bed" | xargs rm 
 
-rm ${outdir}/plot*R
+rm "${outdir}"/plot*R
 
 echo "Run ended at $(date)"
 #end
