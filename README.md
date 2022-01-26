@@ -14,7 +14,7 @@ This pipeline is desgined to quickly genotype viral strains. The input for the p
 
 ## Installation and dependencies
 
-With dependencies installed and added to the `$PATH` variable, QVG can be installed by cloning this repository (`git clone https://github.com/laczkol/RADOrgMiner.git `) and run from the command line using a GNU/Linux operating system.
+With dependencies installed and added to the `$PATH` variable, QVG can be installed by cloning this repository (`git clone https://github.com/laczkol/QVG.git `) and run from the command line using a GNU/Linux operating system.
 
 Dependencies are the following:
 
@@ -42,11 +42,17 @@ Dependencies are the following:
 
 - [GNU Core Utilities](https://www.gnu.org/software/coreutils/) is practically the spine of the pipeline. It is used in the majority of `bash` scripts and should be preinstalled on most of the GNU/Linux-based operating systems.
 
-  After cloning this repository, using the `conda` package manager dependencies can be installed by copying this line into the terminal:
+  After cloning this repository, using the `conda` package manager dependencies can be installed by navigating to the copied directory and typing this line into the terminal:
 
   ```
-  conda env create -f qvg-env.yaml 
+  conda create --name qvg-env --file qvg-env.yaml 
   ```
+
+After that, the newly created environment that has all dependencies installed can be activated by typing the following in the terminal:
+
+````
+conda activate qvg-env
+````
 
 ## Details
 
