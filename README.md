@@ -22,7 +22,7 @@ Dependencies are the following:
 
 - [bwa](http://bio-bwa.sourceforge.net/) to align the short reads to a reference genome
 
-- [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics
+- [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics. Please, make sure that the samtools version used is > 1.10.
 
 - [sambamba](https://lomereiter.github.io/sambamba/) to mark duplicate alignments
 
