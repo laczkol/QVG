@@ -424,7 +424,7 @@ do
 		cut -f 5 "${i}"_pooled_GT.tsv | perl -pe "s/,/\n/g" > "${i}"_pooled_AB.tsv
 		Rscript "${outdir}"/plot_AB.R "${i}"_pooled_AB.tsv &> /dev/null
 		echo "##### Plotting AB distribution of ${i} #####"  #COMMENT
-		#rm "${i}"_pooled_AB.tsv
+		rm "${i}"_pooled_AB.tsv
 	fi
 done
 
