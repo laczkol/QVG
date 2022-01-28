@@ -148,8 +148,6 @@ while [[ "$#" -gt 0 ]];
 	shift
 done
 
-
-
 depends="fastp bwa samtools sambamba freebayes bcftools vcf2fasta vcfstats vcffilter vcftools bedtools R Rscript" #samtools needs to be at least 1.10!
 
 for i in $depends
@@ -274,6 +272,16 @@ do
 	fi
 done
 
+cd "${outdir}"
+cat  <(find ./ -name "*coverage.tsv" | xargs grep -H "^#" | head -n 1 | sed -e 's/\/.*:#/sample_id\t/' -e 's/\.//')  <(find ./ -name "*coverage.tsv" | xargs grep -vH "^#" | sed -e 's/\.\///' -e 's/\/.*:/\t/') > "${outdir}"/coverages.tsv
+
+slist_filt=$(awk -v mincovc="$mincov" '$7 > mincov' "${outdir}"/coverages.tsv | cut -f 1 | grep -v "sample_id")
+echo "The following samples cover at least ${mincov} % of the reference genome" #IF ${mincov} IS EMPTY RAISE A WARNING
+echo "$slist_filt"
+inds=$slist_filt
+
+cd "$cdir"
+
 echo 'args<-commandArgs(TRUE)
 x<-read.table(args[1], sep="\t", header=F)
 name<-paste(args[1], ".png", sep="")
@@ -290,15 +298,14 @@ par(mar=rep(5,4))
 plot(log(x$V3), ylab="log(read depth)", xlab="Position", type="l", main=args[1], cex.lab=2, cex.axis=2, cex.main=2)
 dev.off()' > "${outdir}"/plot_depth.R
 
-cd "${outdir}"
-cat  <(find ./ -name "*coverage.tsv" | xargs grep "^#" | head -n 1 | sed -e 's/\/.*:#/sample_id\t/' -e 's/\.//')  <(find ./ -name "*coverage.tsv" | xargs grep -v "^#" | sed -e 's/\.\///' -e 's/\/.*:/\t/') > "${outdir}"/coverages.tsv
-
-slist_filt=$(awk -v mincovc="$mincov" '$7 > mincov' "${outdir}"/coverages.tsv | cut -f 1 | grep -v "sample_id")
-echo "The following samples cover at least ${mincov} % of the reference genome"
-echo "$slist_filt"
-inds=$slist_filt
-
-cd "$cdir"
+for i in $inds
+do
+	if [[ -f ${outdir}/${i}/${i}_depth.tsv ]]; then
+		cd "${outdir}"/"${i}"
+		Rscript "${outdir}"/plot_depth.R "${i}"_depth.tsv &> /dev/null
+		echo "##### Plotting read depth distribution of ${i} #####"  #COMMENT
+	fi
+done
 
 echo 'args<-commandArgs(TRUE)
 x<-read.csv(args[1], sep="\t")
@@ -310,15 +317,6 @@ plot(x$coverage~x$sample_id, las=2, cex=.5, main="% of genome covered")
 plot(x$numreads~x$sample_id, las=2, cex=.5, main="no. of reads")
 plot(x$meandepth~x$sample_id, las=2, cex=.5, main="mean read depth (×)")
 dev.off()' > "${outdir}"/plot_coverage.R
-
-for i in $inds
-do
-	if [[ -f ${outdir}/${i}/${i}_depth.tsv ]]; then
-		cd "${outdir}"/"${i}"
-		Rscript "${outdir}"/plot_depth.R "${i}"_depth.tsv &> /dev/null
-		echo "##### Plotting read depth distribution of ${i} #####"  #COMMENT
-	fi
-done
 
 if [[ -f ${outdir}/coverages.tsv ]]; then
 	cd "${outdir}"
@@ -385,7 +383,6 @@ find "${outdir}"/*/*.fa | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/sa
 
 echo "##### Calling variant sites using $np parallel threads assuming pooled sequencing. Threads are split by sample files. #####"
 
-
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
@@ -424,10 +421,14 @@ for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_pooled_GT.tsv ]]; then
 		cd "${outdir}"/"${i}"
-		Rscript "${outdir}"/plot_AB.R "${i}"_pooled_GT.tsv &> /dev/null
+		cut -f 5 "${i}"_pooled_GT.tsv | perl -pe "s/,/\n/g" > "${i}"_pooled_AB.tsv
+		Rscript "${outdir}"/plot_AB.R "${i}"_pooled_AB.tsv &> /dev/null
 		echo "##### Plotting AB distribution of ${i} #####"  #COMMENT
+		#rm "${i}"_pooled_AB.tsv
 	fi
 done
+
+rm "${outdir}"/plot*R
 
 cd "$cdir"
 
@@ -467,8 +468,6 @@ find "${outdir}"/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${o
 find "${outdir}" -name "complement" | xargs rm 
 find "${outdir}" -name "realigned.bam" | xargs rm 
 find "${outdir}" -name "realigned.bed" | xargs rm 
-
-rm "${outdir}"/plot*R
 
 echo "Run ended at $(date)"
 #end
