@@ -150,6 +150,14 @@ Other parameters that can be set and makes the fine-tuning of the pipeline possi
 -mincov or --minimum-coverage
 	The percent of the reference genome that should be covered to include a sample file in the analysis. [default = 95]
 ````
+Optionally, a gff file can be specified to transfer the annotations of the reference.
+
+````
+-annot or --annotate
+	Valid options are yes or no. Specifies if annotation transfer should be carried out.
+-g or --gff-file
+	The gff file that contains the gene annotations of the reference.
+````
 
 These default values generally work well with AmpliSeq data obtained by paired-end sequencing using Illumina Miseq. 
 
