@@ -36,6 +36,8 @@ Dependencies are the following:
 
 - [bedtools](https://bedtools.readthedocs.io/en/latest/) to mask the genomic regions with no reads
 
+- [liftoff](https://github.com/agshumate/Liftoff) to annotate genomic regions
+
 - [R](https://www.r-project.org/) and [Rscript](https://rdrr.io/r/utils/Rscript.html) for visualization
 
 - [GNU parallel](https://www.gnu.org/software/parallel/) to run tasks in parallel
