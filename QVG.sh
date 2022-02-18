@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo errexit -euo pipefail -euo nounset
+set -euo pipefail -euo nounset
 
 echo "Run started at $(date)"
 
@@ -9,7 +9,8 @@ outdir=$(pwd)
 ref_db=" "
 
 np=1
-map="yes"
+annot="no"
+gff=" "
 slist=" "
 call="no"
 type="PE"
@@ -141,6 +142,14 @@ while [[ "$#" -gt 0 ]];
 			mincov=$2
 			shift
 			;;
+		-annot|--annotate)
+			annot=$2
+			shift
+			;;
+		-g|--gff-file)
+			gff=$2
+			shift
+			;;
 		*) echo "Unknown parameter passed: $1"
 			exit 1
 			;;
@@ -182,6 +191,8 @@ fi
 outdir=`realpath $outdir`
 
 ref_db=`realpath "$ref_db"`
+
+gff=`realpath "$gff"`
 
 inds=$(cut -f 1 "$slist" | sort)
 
@@ -312,10 +323,18 @@ x<-read.csv(args[1], sep="\t")
 name<-paste(args[1], ".pdf", sep="")
 name<-gsub(".tsv.", ".", name)
 pdf(name, width=20)
-plot(x$covbases~x$sample_id, las=2, cex=.5, main="covered bases (bp)")
-plot(x$coverage~x$sample_id, las=2, cex=.5, main="% of genome covered")
-plot(x$numreads~x$sample_id, las=2, cex=.5, main="no. of reads")
-plot(x$meandepth~x$sample_id, las=2, cex=.5, main="mean read depth (×)")
+plot(x$covbases, xlab=x$sample_id, las=2, pch=19, cex=3, axes=F, main="covered bases (bp)")
+axis(2)
+box()
+plot(x$coverage, xlab=x$sample_id, las=2, pch=19, cex=3, axes=F, main="% of genome covered")
+axis(2)
+box()
+plot(x$numreads, xlab=x$sample_id, las=2, pch=19, cex=3, axes=F, main="no. of reads")
+axis(2)
+box()
+plot(x$meandepth, xlab=x$sample_id, las=2, pch=19, cex=3, axes=F, main="mean read depth (×)")
+axis(2)
+box()
 dev.off()' > "${outdir}"/plot_coverage.R
 
 if [[ -f ${outdir}/coverages.tsv ]]; then
@@ -357,25 +376,6 @@ do
 		bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' "${i}"_p"${ploidy}".vcf > "${i}"_p"${ploidy}"_GT.tsv 2> /dev/null
 	fi
 done
-
-echo 'args<-commandArgs(TRUE)
-x<-read.csv(args[1], sep="\t")
-name<-paste(args[1], ".pdf", sep="")
-name<-gsub(".tsv.", ".", name)
-pdf(name, width=20)
-plot(x$VARIANTS.KB~x$BIN_START, type="l", main=args[1])
-dev.off()' > "${outdir}"/plot_density.R
-
-for i in $inds
-do
-	if [[ -f ${outdir}/${i}/${i}_SNPdensity.snpden ]]; then
-		cd "${outdir}"/"${i}"
-		Rscript "${outdir}"/plot_density.R "${i}"_SNPdensity.snpden &> /dev/null
-		echo "##### Plotting SNP density distribution of ${i} #####"  #COMMENT
-	fi
-done
-
-cd "$cdir"
 
 uniqid=$(date | sed -e 's/ /_/g' -e 's/\.//g' -e 's/,//g' | cut -f 1,2,3,5 -d_)
 
@@ -424,11 +424,9 @@ do
 		cut -f 5 "${i}"_pooled_GT.tsv | perl -pe "s/,/\n/g" > "${i}"_pooled_AB.tsv
 		Rscript "${outdir}"/plot_AB.R "${i}"_pooled_AB.tsv &> /dev/null
 		echo "##### Plotting AB distribution of ${i} #####"  #COMMENT
-		rm "${i}"_pooled_AB.tsv
+		#rm "${i}"_pooled_AB.tsv
 	fi
 done
-
-rm "${outdir}"/plot*R
 
 cd "$cdir"
 
@@ -468,6 +466,60 @@ find "${outdir}"/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${o
 find "${outdir}" -name "complement" | xargs rm 
 find "${outdir}" -name "realigned.bam" | xargs rm 
 find "${outdir}" -name "realigned.bed" | xargs rm 
+
+
+if [[ "$annot" == "no" ]]; then
+	echo 'args<-commandArgs(TRUE)
+	x<-read.csv(args[1], sep="\t")
+	name<-paste(args[1], ".pdf", sep="")
+	name<-gsub(".tsv.", ".", name)
+	pdf(name, width=20)
+	plot(x$VARIANTS.KB~x$BIN_START, xlab="bin start", ylab="variants/kb", lwd=2, type="l", main=args[1])
+	dev.off()' > "${outdir}"/plot_density.R
+
+	for i in $inds
+	do
+		if [[ -f ${outdir}/${i}/${i}_SNPdensity.snpden ]]; then
+			cd "${outdir}"/"${i}"
+			Rscript "${outdir}"/plot_density.R "${i}"_SNPdensity.snpden &> /dev/null
+			echo "##### Plotting SNP density distribution of ${i} #####"  #COMMENT
+		fi
+	done
+
+	cd "$cdir"
+
+elif [[ "$annot" == "yes" ]]; then
+	if [[ ${#gff} -le 1 ]]; then
+		echo "Please specify reference genome"
+		exit 1
+	fi
+
+	echo 'args<-commandArgs(TRUE)
+	x<-read.csv(args[1], sep="\t")
+	name<-paste(args[1], ".pdf", sep="")
+	name<-gsub(".tsv.", ".", name)
+	regions<-read.csv(args[2], sep = "\t", header = F)
+	pdf(name, width=20)
+	plot(x$VARIANTS.KB~x$BIN_START, xlab="bin start", ylab="variants/kb", lwd=2, type="l", ylim=c(0,max(x$VARIANTS.KB+2)), main=args[1])
+	rect(xleft=regions$V1, xright = regions$V2, ybottom=max(x$VARIANTS.KB), ytop=max(x$VARIANTS.KB)+1, col=c("#BEBEBE50","#A9A9A950"))
+	text(x = (regions$V2+regions$V1)/2, y = max(x$VARIANTS.KB)+1.5, labels = regions$V3, srt=90, cex=0.8)
+	dev.off()' > "${outdir}"/plot_density.R
+
+	cut -f 3 "$gff" | grep -v "#" | sort | uniq > ${outdir}/feature.types
+
+	for i in $inds
+	do
+		if [[ -f ${outdir}/${i}/${i}_SNPdensity.snpden ]]; then
+			cd "${outdir}"/"${i}"
+			liftoff -g "$gff" -mismatch 10000 -a 0.01 -f "${outdir}"/feature.types -o "${i}".gff "${i}"_masked.fasta "$ref_db" &> /dev/null
+			grep -v "^#" "${i}".gff | awk '$3 != "CDS"' | awk '$3 != "region"' | cut -f 4,5,9 | sed -e "s/\tID.*Name=/\t/" -e "s/\tID.*gbkey=/\t/" | cut -f 1 -d";" > "${i}"_regions.tsv
+			Rscript "${outdir}"/plot_density.R "${i}"_SNPdensity.snpden "${i}"_regions.tsv
+			echo "##### Plotting SNP density distribution of ${i} #####"  #COMMENT
+		fi
+	done
+fi
+
+rm "${outdir}"/plot*R
 
 echo "Run ended at $(date)"
 #end
