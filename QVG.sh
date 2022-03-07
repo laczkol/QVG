@@ -454,9 +454,10 @@ do
 			samtools sort -@ "$np" > "${outdir}"/"${i}"/realigned.bam
 		fi
 
-		echo "##### Finding blocks with zero reads #####"
-		bedtools bamtobed -i "${outdir}"/"${i}"/realigned.bam | bedtools merge -i - > "${outdir}"/"${i}"/realigned.bed
-		bedtools complement -i "${outdir}"/"${i}"/realigned.bed -g "${outdir}"/"${i}"/"${i}".genomfile > "${outdir}"/"${i}"/complement
+		echo "##### Finding blocks with < ${fb_min_cov} reads #####"
+		#bedtools bamtobed -i "${outdir}"/"${i}"/realigned.bam | bedtools merge -i - > "${outdir}"/"${i}"/realigned.bed
+		#bedtools complement -i "${outdir}"/"${i}"/realigned.bed -g "${outdir}"/"${i}"/"${i}".genomfile > "${outdir}"/"${i}"/complement
+		bedtools genomecov -ibam "${outdir}"/"${i}"/realigned.bam -d | awk -v mincov="$fb_min_cov" '$3 < mincov' | awk 'OFS="\t"{print $1, $2-1, $2}' | bedtools merge -i - > "${outdir}"/"${i}"/complement
 		bedtools maskfasta -fi "${outdir}"/"${i}"/"${i}"*.fa -bed "${outdir}"/"${i}"/complement -fo "${outdir}"/"${i}"/"${i}"_masked.fasta
 	fi
 done
@@ -465,7 +466,7 @@ find "${outdir}"/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${o
 
 find "${outdir}" -name "complement" | xargs rm 
 find "${outdir}" -name "realigned.bam" | xargs rm 
-find "${outdir}" -name "realigned.bed" | xargs rm 
+#find "${outdir}" -name "realigned.bed" | xargs rm 
 
 
 if [[ "$annot" == "no" ]]; then
