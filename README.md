@@ -4,7 +4,9 @@
 
 If you find this pipeline useful, please, do not forget to credit our work by citing this paper:
 
-SZERZŐK, CÍM, ÚJSÁG, …
+Rapid genotyping of viral samples using Illumina short-read sequencing data
+Alex Varadi, Eszter Kaszab, Gabor Kardos, Eszter Prepost, Krisztina Szarka, and Levente Laczko
+*bioRxiv preprint*
 
 Feedback is very welcome.
 
