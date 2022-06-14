@@ -116,7 +116,7 @@ while [[ "$#" -gt 0 ]];
 			hcm=$2
 			shift
 			;;
-		-sc|--smoot-coverage)
+		-sc|--smooth-coverage)
 			smooth_coverage=$2
 			shift
 			;;
