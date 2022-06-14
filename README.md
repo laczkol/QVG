@@ -165,7 +165,7 @@ Optionally, the read depth of alignments can be smoothed out along the reference
 ````
 -sc or --smooth-coverage
 	Defines if coverage smoothing should be done [default = no]
--sw or --smooth-window
+-smoothw or --smooth-window
 	The consecutive window size of random resampling [default = 100]
 -scount or --smooth-count
 	Read count within the window for resampling [default = 500]
