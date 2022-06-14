@@ -120,7 +120,7 @@ while [[ "$#" -gt 0 ]];
 			smooth_coverage=$2
 			shift
 			;;
-		-sw|--smooth-window)
+		-smoothw|--smooth-window)
 			smooth_window=$2
 			shift
 			;;
