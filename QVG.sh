@@ -84,19 +84,19 @@ while [[ "$#" -gt 0 ]];
 			type=$2
 			shift
 			;;
-		-trim_front1|--trim_front1)
+		-trim_front1|--trim-front1)
 			tf1=$2
 			shift
 			;;
-		-trim_front2|--trim_front2)
+		-trim_front2|--trim-front2)
 			tf2=$2
 			shift
 			;;
-		-trim_tail1|--trim_tail1)
+		-trim_tail1|--trim-tail1)
 			tt1=$2
 			shift
 			;;
-		-trim_tail2|--trim_tail2)
+		-trim_tail2|--trim-tail2)
 			tt2=$2
 			shift
 			;;
@@ -252,7 +252,7 @@ if [[ "$type" == "PE" ]]; then
 			fastp -i "$r1" -I "$r2" -o "${outdir}"/"${i}"/"${i}"_R1.fq.gz -O "${outdir}"/"${i}"/"${i}"_R2.fq.gz -5 20 -3 20 -W 10 -M 20 --detect_adapter_for_pe -w "$np" -x -f "$tf1" -F "$tf2" -t "$tt1" -T "$tt2" -l "$ml" -h "${outdir}"/"${i}"/"${i}"_filter.html -j "${outdir}"/"${i}"/"${i}"_filter.json
 
 			echo "##### Aligning ${i} to $ref_db #####"
-			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz "${outdir}"/"${i}"/"${i}"_R2.fq.gz 2> /dev/null |\
+			bwa mem -t "$np" -k "$bwa_k" -A "$bwa_A" -B "$bwa_B" -O "$bwa_O" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz "${outdir}"/"${i}"/"${i}"_R2.fq.gz 2> /dev/null |\
 			samtools view -h -b -u -@ "$np" |\
 			samtools sort -@ "$np" > "${outdir}"/"${i}"/"${i}".bam
 		else
@@ -278,7 +278,7 @@ elif [[ "$type" == "SE" ]]; then
 			fastp -i "$r1" -o "${outdir}"/"${i}"/"${i}"_R1.fq.gz -5 20 -3 20 -W 10 -M 20 -w "$np" -x -f 10 -t 1 -l 30 -h "${outdir}"/"${i}"/"${i}"_filter.html -j "${outdir}"/"${i}"/"${i}"_filter.json
 
 			echo "##### Aligning ${i} to $ref_db #####"
-			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz 2> /dev/null |\
+			bwa mem -t "$np" -k "$bwa_k" -A "$bwa_A" -B "$bwa_B" -O "$bwa_O" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz 2> /dev/null |\
 			samtools view -h -b -u -@ "$np" |\
 			samtools sort -@ "$np" > "${outdir}"/"${i}"/"${i}".bam
 		else
