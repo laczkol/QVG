@@ -152,6 +152,24 @@ Other parameters that can be set and makes the fine-tuning of the pipeline possi
 -mincov or --minimum-coverage
 	The percent of the reference genome that should be covered to include a sample file in the analysis. [default = 95]
 ````
+The pipeline by default clips alignments at high-coverage regions, that can be fine-tuned with the following options:
+````
+-cw or --clip-window
+	The sliding window size used to assess read depth [default = 100]
+-cs or --clip-step
+	The step size of sliding windows [default = 10]
+-hc or --high-coverage
+	The mean read depth is assessed for each sample files. This value is used to multiply the mean read depth and define the read depth threshold of regions to be clipped [default = 10]
+````
+Optionally, the read depth of alignments can be smoothed out along the reference genome (can be useful to decrease read depth bias). This feature can be parametrized by the following options: 
+````
+-sc or --smooth-coverage
+	Defines if coverage smoothing should be done [default = no]
+-sw or --smooth-window
+	The consecutive window size of random resampling [default = 100]
+-scount or --smooth-count
+	Read count within the window for resampling [default = 500]
+````
 Optionally, a gff file can be specified to transfer the annotations of the reference.
 
 ````
