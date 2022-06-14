@@ -56,6 +56,8 @@ After that, the newly created environment that has all dependencies installed ca
 conda activate qvg-env
 ````
 
+R and Rscript are not included in the provided `.yaml` file and should be installed manually. The reason for this is that even the newest version of R installed with conda might have dependency issues at some systems. Please, make sure that R is installed correctly and is added to your $PATH variable. A similar issue sometimes can be observed with samtools. Please, make sure that typing `samtools` to your terminal does not throw any errors. In the provided `.yaml` file samtools 1.15.1 is included and is recommended to run the pipeline, but any version of this software above v1.10 should work correctly.
+
 ## Details
 
 The pipeline can parametrized from the command line. The two mandatory options to run the pipeline are the following:
