@@ -34,6 +34,12 @@ min_var_qual=10
 min_qual_ao=10
 snpwindow=1000
 mincov=95
+clipwindow=100
+clipstep=10
+hcm=10
+smooth_coverage="no"
+smooth_window=100
+smooth_count=500
 
 while [[ "$#" -gt 0 ]];
 	do
@@ -98,6 +104,30 @@ while [[ "$#" -gt 0 ]];
 			ml=$2
 			shift
 			;;
+		-cw|--clip-window)
+			clipwindow=$2
+			shift
+			;;
+		-cs|--clip-step)
+			clipstep=$2
+			shift
+			;;
+		-hc|--high-coverage)
+			hcm=$2
+			shift
+			;;
+		-sc|--smoot-coverage)
+			smooth_coverage=$2
+			shift
+			;;
+		-sw|--smooth-window)
+			smooth_window=$2
+			shift
+			;;
+		-scount|--smooth-count)
+			smooth_count=$2
+			shift
+			;;
 		-p|--fb-ploidy)
 			ploidy=$2
 			shift
@@ -157,7 +187,7 @@ while [[ "$#" -gt 0 ]];
 	shift
 done
 
-depends="fastp bwa samtools sambamba freebayes bcftools vcf2fasta vcfstats vcffilter vcftools bedtools R Rscript" #samtools needs to be at least 1.10!
+depends="fastp bwa samtools sambamba freebayes bcftools vcf2fasta vcfstats vcffilter vcftools bedtools bioawk R Rscript" #samtools needs to be at least 1.10!
 
 for i in $depends
 do
@@ -261,12 +291,35 @@ else
 	echo "Sequencing type not recognized (SE or PE)"
 fi
 
+bioawk -c fastx '{print $name,length($seq)}' "$ref_db" > "${outdir}"/gfile
+bedtools makewindows -g "${outdir}"/gfile -w "$clipwindow" -s "$clipstep" > "${outdir}"/bedfile
+
 for i in $inds;
 do
 
 	if [[ -f ${outdir}/${i}/${i}.bam ]]; then
-		echo "##### Marking duplicate reads of ${i} #####"
-		sambamba markdup -p -t "$np" "${outdir}"/"${i}"/"${i}".bam "${outdir}"/"${i}"/"${i}"_markdup.bam
+
+		covs=$(samtools coverage "${outdir}"/"${i}"/"${i}".bam | cut -f 7 | tail -1 | awk -v hcm="$hcm" '$2 = $1*hcm')
+		highcov=$(echo $covs | cut -f 2 -d " " | cut -f 1 -d ".")
+		maxcov=$(samtools depth "${outdir}"/"${i}"/"${i}".bam | cut -f 3 | sort -n | tail -1)
+
+		if [[ $highcov -gt $maxcov ]];then
+			echo "##### No clipping of high-coverage regions can be done (threshold is larger than the maximum read depth observed) #####"
+
+			echo "##### Marking duplicate reads of ${i} #####"
+			sambamba markdup -p -t "$np" "${outdir}"/"${i}"/"${i}".bam "${outdir}"/"${i}"/"${i}"_markdup.bam
+
+		else
+			echo "##### Clipping high coverage regions #####"
+			bioawk -c fastx '{print $name,length($seq)}' "$ref_db" > gfile
+			samtools index -@ "$np" "${outdir}"/"${i}"/"${i}".bam
+			bedtools coverage -a "${outdir}"/bedfile -b "${outdir}"/"${i}"/"${i}".bam > "${outdir}"/"${i}"/"${i}".bedcov
+			awk -v md="$highcov" -v OFS="\t" '$4 <= md' "${outdir}"/"${i}"/"${i}".bedcov | bedtools merge > "${outdir}"/"${i}"/"${i}".covbed
+			sambamba slice -L "${outdir}"/"${i}"/"${i}".covbed "${outdir}"/"${i}"/"${i}".bam | samtools sort -@ "$np" | samtools view -h -b -@ "$np" > "${outdir}"/"${i}"/"${i}"_clip.bam
+
+			echo "##### Marking duplicate reads of ${i} #####"
+			sambamba markdup -p -t "$np" "${outdir}"/"${i}"/"${i}"_clip.bam "${outdir}"/"${i}"/"${i}"_markdup.bam
+		fi
 
 		echo "##### Running basic statistics on the alignments of ${i} with samtools #####"	
 		
@@ -280,6 +333,38 @@ do
 		echo "##### Simple statistics of ${i} (samtools flagstat) can be found in ${outdir}/${i}/${i}_flagstat.txt #####"
 		echo "samtools idxstats ${outdir}/${i}/${i}_markdup.bam > ${outdir}/${i}/${i}_idxstats.tsv" | parallel -j "$np"
 		echo "##### BAM index statistics of ${i} can be found in ${outdir}/${i}/${i}_idxstats.tsv #####"
+
+		if [[ $smooth_coverage == "yes" ]];then
+
+			echo "##### Smoothing coverage with a consecutive window size of $smooth_window and a readcount of $smooth_count within windows #####"
+			bedtools makewindows -g "${outdir}"/gfile -w "$smooth_window" > "${outdir}"/cons_bedfile
+			mkdir "${outdir}"/"${i}"/loc
+			bedtools coverage -sorted -a "${outdir}"/cons_bedfile -b "${outdir}"/"${i}"/"${i}"_markdup.bam |\
+				awk -v OFS="\t" -v cov="$smooth_count" '{if ($4 == 0) $8 = 1; else $8 = cov / $4; print $0}' | cut -f 1-3,8 |\
+				while read line
+				do
+					name=$(echo $line | cut -f 1-3 -d " " | sed 's/ /_/g')
+					echo "$line" | sed 's/ /\t/g' > "${outdir}"/"${i}"/loc/"${name}"
+				done
+
+			cd "${outdir}"/"${i}"/loc/
+			beds=$(ls *)
+			cd "$cdir"
+
+			mkdir "${outdir}"/"${i}"/temps
+			for b in $beds
+			do
+				prop=$(cut -f 4 "${outdir}"/"${i}"/loc/"${b}")
+				sambamba view -L "${outdir}"/"${i}"/loc/"${b}" -h -s "$prop" "${outdir}"/"${i}"/"${i}"_markdup.bam > "${outdir}"/"${i}"/temps/${b}_s.bam 2> /dev/null
+			done
+
+			ls "${outdir}"/"${i}"/temps/*s.bam > "${outdir}"/"${i}"/bamlist
+
+			samtools merge -@ "np" -b "${outdir}"/"${i}"/bamlist -f -o "${outdir}"/"${i}"/"${i}"_smooth.bam
+			samtools sort -@ "$np" "${outdir}"/"${i}"/"${i}"_smooth.bam | samtools view -h -b -@ 6 > "${outdir}"/"${i}"/"${i}"_smooth_sort.bam
+			sambamba markdup -t "$np" "${outdir}"/"${i}"/"${i}"_smooth_sort.bam "${outdir}"/"${i}"/"${i}"_markdup.bam 2> /dev/null
+			samtools index "${outdir}"/"${i}"/"${i}"_markdup.bam
+		fi
 	fi
 done
 
@@ -314,7 +399,7 @@ do
 	if [[ -f ${outdir}/${i}/${i}_depth.tsv ]]; then
 		cd "${outdir}"/"${i}"
 		Rscript "${outdir}"/plot_depth.R "${i}"_depth.tsv &> /dev/null
-		echo "##### Plotting read depth distribution of ${i} #####"  #COMMENT
+		echo "##### Plotting read depth distribution of ${i} #####"
 	fi
 done
 
@@ -433,28 +518,31 @@ cd "$cdir"
 echo "##### Exporting distribution of sites with more than one allele across samples to ${outdir}/non_haploid_sites.txt #####"
 find "${outdir}" -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > "${outdir}"/non_haploid_sites.txt # instead check for allele balance and export sites with AB > 0
 
-echo "##### Masking of unsequenced positions in the consensus fasta files. #####"
+echo "##### Masking of low-depth positions in the consensus fasta files. #####"
 for i in $inds
 do
 	echo "$i"
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]]; then
-		samtools faidx "${outdir}"/"${i}"/"${i}"*.fa #should be the only fasta; if not unexpected behavior may follow, watch out!
-		cut -f 1-2 "${outdir}"/"${i}"/"${i}"*.fa.fai > "${outdir}"/"${i}"/"${i}".genomfile
+#		samtools faidx "${outdir}"/"${i}"/"${i}"*.fa #should be the only fasta; if not unexpected behavior may follow, watch out!
+#		cut -f 1-2 "${outdir}"/"${i}"/"${i}"*.fa.fai > "${outdir}"/"${i}"/"${i}".genomfile
+		bioawk -c fastx '{print $name, length($seq)}' "${outdir}"/"${i}"/"${i}"*.fa > "${outdir}"/"${i}"/"${i}".genomfile
 		bwa index "${outdir}"/"${i}"/"${i}"*.fa
 
 		if [[ "$type" == "PE" ]]; then
 			echo "##### Realigning ${i} #####"
-			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "${outdir}"/"${i}"/"${i}"*.fa "${outdir}"/"${i}"/"${i}"_R1.fq.gz "${outdir}"/"${i}"/"${i}"_R2.fq.gz 2> /dev/null |\
+			samtools sort -n -@ "$np" "${outdir}"/"${i}"/"${i}"_markdup.bam | samtools fastq -@ "$np" -1 "${outdir}"/"${i}"/1.fastq -2 "${outdir}"/"${i}"/2.fastq -s "${outdir}"/"${i}"/s.fastq
+			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "${outdir}"/"${i}"/"${i}"*.fa "${outdir}"/"${i}"/1.fastq "${outdir}"/"${i}"/2.fastq 2> /dev/null |\
 			samtools view -h -b -u -@ "$np" |\
 			samtools sort -@ "$np" > "${outdir}"/"${i}"/realigned.bam
 		elif [[ "$type" == "SE" ]]; then
 			echo "##### Realigning ${i} #####"
-			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "${outdir}"/"${i}"/"${i}"*.fa "${outdir}"/"${i}"/"${i}"_R1.fq.gz 2> /dev/null |\
+			samtools sort -n -@ "$np" "${outdir}"/"${i}"/"${i}"_markdup.bam | samtools fastq -@ "$np" -0 "${outdir}"/"${i}"/s.fastq
+			bwa mem -t "$np" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "${outdir}"/"${i}"/"${i}"*.fa "${outdir}"/"${i}"/s.fastq 2> /dev/null |\
 			samtools view -h -b -u -@ "$np" |\
 			samtools sort -@ "$np" > "${outdir}"/"${i}"/realigned.bam
 		fi
 
-		echo "##### Finding blocks with < ${fb_min_cov} reads #####"
+		echo "##### Finding and masking blocks with < ${fb_min_cov} reads and potential clipped high-coverage regions #####"
 		#bedtools bamtobed -i "${outdir}"/"${i}"/realigned.bam | bedtools merge -i - > "${outdir}"/"${i}"/realigned.bed
 		#bedtools complement -i "${outdir}"/"${i}"/realigned.bed -g "${outdir}"/"${i}"/"${i}".genomfile > "${outdir}"/"${i}"/complement
 		bedtools genomecov -ibam "${outdir}"/"${i}"/realigned.bam -d | awk -v mincov="$fb_min_cov" '$3 < mincov' | awk 'OFS="\t"{print $1, $2-1, $2}' | bedtools merge -i - > "${outdir}"/"${i}"/complement
@@ -465,7 +553,7 @@ done
 find "${outdir}"/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_masked_${uniqid}.fa"
 
 find "${outdir}" -name "complement" | xargs rm 
-find "${outdir}" -name "realigned.bam" | xargs rm 
+#find "${outdir}" -name "realigned.bam" | xargs rm
 #find "${outdir}" -name "realigned.bed" | xargs rm 
 
 
