@@ -121,13 +121,13 @@ Other parameters that can be set and makes the fine-tuning of the pipeline possi
 	The gap opening penalty score of bwa. Used during short-read alignment. [default = 6]
 -type or --sequencing-type
 	The pipeline can use both singe-end and paired-end reads. The default is paired-end (PE). Setting this parameter to SE will look for single-end read files.
--trim_front1 or --trim_front1
+-trim_front1 or --trim-front1
 	The number of bases to be trimmed from the beginning of R1 reads. [default = 10]
--trim_front2 or --trim_front2
+-trim_front2 or --trim-front2
 	The number of bases to be trimmed from the beginning of R2 reads. [default = 10]
--trim_tail1 or --trim_tail1
+-trim_tail1 or --trim-tail1
 	The number of bases to be trimmed from the end of R1 reads. [default = 10]
--trim_tail2 or --trim_tail2
+-trim_tail2 or --trim-tail2
 	The number of bases to be trimmed from the end of R2 reads. [default = 10]
 -minlen or --min-read-lenght
 	The minimum length of reads to be included after quality filtering. [default = 30]
