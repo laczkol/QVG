@@ -1,0 +1,26 @@
+total variant sites:	257
+of which 256 (0.996109) are biallelic and 1 (0.00389105) are multiallelic
+total variant alleles:	258
+unique variant alleles:	258
+
+snps:	255
+mnps:	3
+indels:	0
+complex:	0
+
+mismatches:	261
+
+ts/tv ratio:	6.45714
+deamination ratio:	1
+biallelic snps:	253 @ 6.90625
+
+ins/del length frequency distribution
+length	ins	del	ins/del
+
+insertion alleles / deletion alleles:	-nan
+inserted bases / deleted bases:	-nan
+
+mnp length frequency distribution
+length	count
+2	3
+total bases in mnps:	6
