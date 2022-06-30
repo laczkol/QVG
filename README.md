@@ -1,6 +1,6 @@
 # QVG
 
-**Quick Viral genome Genotype**
+**Quick Viral genome Genotyper**
 
 If you find this pipeline useful, please, do not forget to credit our work by citing this paper:
 
@@ -10,66 +10,116 @@ Feedback is very welcome.
 
 ## Overview
 
-This pipeline is desgined to quickly genotype viral strains. The input for the pipeline are the reads produced by Illumina sequencing experiments in `fastq.gz` format and the list of sample names to be analyzed. After aligning the filtered reads to the preferably closely related reference genome, two variant calls are performed. One of them assumes that the ploidy of samples is one and export the sequence of the dominant genome found in each sample file, whereas the second assumes pooled sequencing and after calculating the allele balance gives insight into the heterogeneity of samples.
+This pipeline is designed to genotype targeted viral strains quickly. The input for the pipeline are the single or paired-end reads produced by Illumina sequencing experiments in `fastq.gz` format and the list of sample names to be analyzed, and a reference genome. Currently, the pipeline does not include any specific step to remove host contamination and therefore assumes that the target viral DNA is present at the highest frequency. After aligning the filtered reads to the preferably closely related reference genome, marking PCR artifacts and optical duplicates, and clipping high-depth alignments, two variant calls are performed. One of them assumes that the ploidy of samples is one and exports the sequence of the dominant genome found in each sample file, whereas the second assumes pooled sequencing and, after calculating the allele balance, gives insight into the heterogeneity (within-host variation) of samples. Optionally annotating the genomes or smoothing of sequencing depth is also possible; then, the genome annotation `.gff` file should also be provided.
 
 ## Installation and dependencies
 
-With dependencies installed and added to the `$PATH` variable, QVG can be installed by cloning this repository (`git clone https://github.com/laczkol/QVG.git `) and run from the command line using a GNU/Linux operating system.
+The recommended installation of QVG is to clone this repository with the following command from GitHub: 
 
-Dependencies are the following:
+  ```
+git clone https://github.com/laczkol/QVG.git 
+  ```
+
+After cloning, using the `conda` package manager, dependencies specified in ` qvg-env.yaml ` file can be easily installed by navigating to the copied directory and typing this line into the terminal:
+
+  ```
+conda create --name qvg-env --file qvg-env.yaml 
+  ```
+
+After that, the newly created environment with all dependencies installed can be activated by typing the following in the terminal:
+
+  ````
+conda activate qvg-env
+  ````
+
+This way, all dependencies except R and R Script will be installed and added to `$PATH`. R should be installed manually (see Dependencies).
+
+To run QVG from the command line using a GNU/Linux operating system, the path to `QVG.sh` should be added to the user's $PATH variable. To do this, open the user's shell-specific configuration file (usually `~/.bashrc`) with a text editor (`nano` in this example).
+
+```
+nano ~/.bashrc
+```
+
+Add the following line to the end of it. Change the `path/to/script` part to the actual path to QVG.sh.
+
+```
+export PATH="path/to/QVG.sh:$PATH"
+```
+
+Save the file, then load the new `$PATH` to the current shell session:
+
+```
+source ~/.bashrc
+```
+
+For a temporary effect, you can `export PATH="path/to/QVG.sh:$PATH"` in your terminal, in which case the path of `QVG.sh` should be exported every time a new session is opened.
+
+Dependencies are the following (the way to install them one by one is given in code blocks):
 
 - [fastp](https://github.com/OpenGene/fastp) for filtering the raw reads
 
+  `conda install -c bioconda fastp`
+
 - [bwa](http://bio-bwa.sourceforge.net/) to align the short reads to a reference genome
+
+  `conda install -c bioconda bwa`
 
 - [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics. Please, make sure that the samtools version used is > 1.10.
 
+  `conda install -c bioconda samtools=1.15.1`
+
 - [sambamba](https://lomereiter.github.io/sambamba/) to mark duplicate alignments
+
+  `conda install -c bioconda sambamba=0.8.2`
 
 - [freebayes](https://github.com/freebayes/freebayes) for variant calling
 
+  `conda install -c bioconda freebayes`
+
 - [bcftools](https://samtools.github.io/bcftools/bcftools.html) to export variants and allele balance in tabular format
+
+  `conda install -c bioconda bcftools`
 
 - vcf2fasta, vcfstats and vcffilter from the [vcflib](https://github.com/vcflib/vcflib) for file conversion, exporting vcf statistics and variant filtering
 
+  `conda install -c bioconda vcflib`
+
 - [vcftools](http://vcftools.sourceforge.net/) to filter for missingness
+
+  `conda install -c bioconda vcftools`
 
 - [bedtools](https://bedtools.readthedocs.io/en/latest/) to mask the genomic regions with no reads
 
+  `conda install -c bioconda bedtools`
+
 - [liftoff](https://github.com/agshumate/Liftoff) to annotate genomic regions
 
-- [R](https://www.r-project.org/) and [Rscript](https://rdrr.io/r/utils/Rscript.html) for visualization
+  `conda install -c bioconda  liftoff minimap=2.17`
+
+- [R](https://www.r-project.org/) and [Rscript](https://rdrr.io/r/utils/Rscript.html) for visualization. Installation of R is detailed its own website. Most GNU/Linux distributions can install `R` using its official repository.
 
 - [GNU parallel](https://www.gnu.org/software/parallel/) to run tasks in parallel
 
-- [GNU Core Utilities](https://www.gnu.org/software/coreutils/) is practically the spine of the pipeline. It is used in the majority of `bash` scripts and should be preinstalled on most of the GNU/Linux-based operating systems.
+  `conda install -c conda-forge parallel`
 
-  After cloning this repository, using the `conda` package manager dependencies can be installed by navigating to the copied directory and typing this line into the terminal:
+- [GNU Core Utilities](https://www.gnu.org/software/coreutils/) is practically the spine of the pipeline. It is used in most `bash` scripts and should be pre-installed on most GNU/Linux-based operating systems.
 
-  ```
-  conda create --name qvg-env --file qvg-env.yaml 
-  ```
+Software installed with conda is added automatically to the $PATH variable if `miniconda` is configured correctly.
 
-After that, the newly created environment that has all dependencies installed can be activated by typing the following in the terminal:
-
-````
-conda activate qvg-env
-````
-
-`R` and `Rscript` are not included in the provided `.yaml` file and should be installed manually. The reason for this is that even the newest version of R installed with conda might have dependency issues at some systems. Please, make sure that `R` is installed correctly and is added to your `$PATH` variable. A similar issue sometimes can be observed with samtools. Please, make sure that typing `samtools` to your terminal does not throw any errors. In the provided `.yaml` file `samtools 1.15.1` is included and is recommended to run the pipeline, but any version of this software above v1.10 should work correctly.
+`R` and `Rscript` are not included in the provided `.yaml` file and should be installed manually. This is because even the newest R version installed with conda might have dependency issues at some systems (conflict of dependencies). Please ensure that `R` is installed correctly and added to your `$PATH` variable. A similar issue sometimes can be observed with samtools. Please ensure that typing `samtools` to your terminal does not throw any errors. In the provided `.yaml` file, `samtools 1.15.1` is included and is recommended to run the pipeline, but any version of this software above v1.10 should work correctly.
 
 ## Details
 
-The pipeline can parametrized from the command line. The two mandatory options to run the pipeline are the following:
+The pipeline can be parametrized from the command line. The two mandatory options to run the pipeline are the following:
 
 ```
  -r or --reference-genome
- 	The file that contains the reference genome that should be used for both aligning the reads haplotype calling. The reference should contain only one contig.
+ 	The reference genome sequence in .fasta format. The reference should contain only one contig.
  -samples-list or --samples-list
-	Text file that list of sample file basenames to be included in the analysis
+	A text file that listing sample file basenames to be included in the analysis
 ```
 
-Please, make sure that file specified with `-samples-list` contains only the basenames of sample files and does not contain any headers, extra new-line characters and empty lines. For example, this text file to include paired-end reads of five samples named S1, S2, S3, S4, S5 would look like the following:
+Please ensure that the file specified with `-samples-list` contains only the basenames of sample files and does not contain any headers, extra new-line characters, and empty lines. For example, this text file to include paired-end reads of five samples named S1, S2, S3, S4, and S5 would look like the following:
 
 ````
 S1
@@ -91,24 +141,24 @@ S5_*R1*.fastq.gz	S5_*R2*.fastq.gz
 
 The asterisk (*) denotes a wild-card and can be any character.
 
-With all other parameters left default, the pipeline can be invoked by typing the following line in a terminal (assuming that `QVG.sh` is added to the `$PATH`):
+With all other parameters left by default, the pipeline can be invoked by typing the following line in a terminal (assuming that `QVG.sh` is added to the `$PATH`):
 
 ````bash
 QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt
 ````
 
-By default, both the input and output directories are assumed to be the current directory. These paramteres can be altered by the following paramters:
+By default, the input and output directories are assumed to be the current directories. The following options can alter these parameters:
 
 ````
 -s or --samples-directory
-	The input directory that contains the sample files listed in list_of_samples.txt.
+	The input directory containing the sample files listed in list_of_samples.txt.
 -o or --output-directory
-	The output directory that will store all the output files of the pipeline.
+	The output directory to store all the output files of the pipeline.
 ````
 
-QVG uses the GNU Parallel tool to speed up the analysis. The number of CPU threads to be used during the whole pipeline can be specified by `-np or number-of-processors` and the default value is. For example, setting `-np 10` will use 10 CPU threads.
+QVG uses the GNU Parallel tool to speed up the analysis. The number of CPU threads used during the pipeline can be specified by `-np or number-of-processors` and the default value is one. For example, setting `-np 10` will use 10 CPU threads.
 
-Other parameters that can be set and makes the fine-tuning of the pipeline possible:
+Other parameters that can be set and make the fine-tuning of the pipeline possible:
 
 ````
 -bwa_k or --min-seed-length
@@ -152,16 +202,20 @@ Other parameters that can be set and makes the fine-tuning of the pipeline possi
 -mincov or --minimum-coverage
 	The percent of the reference genome that should be covered to include a sample file in the analysis. [default = 95]
 ````
-The pipeline by default clips alignments at high-coverage regions, that can be fine-tuned with the following options:
+
+The pipeline, by default, clips alignments at high-coverage regions that can be fine-tuned with the following options:
+
 ````
 -cw or --clip-window
 	The sliding window size used to assess read depth [default = 100]
 -cs or --clip-step
 	The step size of sliding windows [default = 10]
 -hc or --high-coverage
-	The mean read depth is assessed for each sample files. This value is used to multiply the mean read depth and define the read depth threshold of regions to be clipped [default = 10]
+	The mean read depth is assessed for each sample file. This value is used to multiply the mean read depth and define the read depth threshold of regions to be clipped [default = 10]
 ````
-Optionally, the read depth of alignments can be smoothed out along the reference genome (can be useful to decrease read depth bias). This feature can be parametrized by the following options: 
+
+Optionally, the read depth of alignments can be smoothed out along the reference genome (can be useful to decrease read depth bias). The following options can parametrize this feature: 
+
 ````
 -sc or --smooth-coverage
 	Defines if coverage smoothing should be done [default = no]
@@ -170,32 +224,39 @@ Optionally, the read depth of alignments can be smoothed out along the reference
 -scount or --smooth-count
 	Read count within the window for resampling [default = 500]
 ````
-Optionally, a gff file can be specified to transfer the annotations of the reference.
+
+Optionally, a `.gff` file can be specified to transfer the annotations of the reference.
 
 ````
 -annot or --annotate
 	Valid options are yes or no. Specifies if annotation transfer should be carried out.
 -g or --gff-file
-	The gff file that contains the gene annotations of the reference.
+	The .gff file containing the gene annotations of the reference.
 ````
 
-These default values generally work well with AmpliSeq data obtained by paired-end sequencing using Illumina Miseq. 
+A typical command to run `QVG.sh` including the annotation step, would look like the following:
+
+````
+QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt -s ./fastq_files -o ./output_files -annot yes -g reference_genome.gff3 -np <number_of_threads>
+````
+
+The default values generally work well with AmpliSeq data obtained by paired-end sequencing using Illumina Miseq. 
 
 ## Main output
 
-The output directory should containt the following files:
+The output directory should contain the following files:
 
-`coverages.pdf`: This is the summary of statistics exported by `samtools`, including the number of positions and percent of genome covered by sequencing reads,  the total number of reads and the mean read depth. This plot is created from the table `coverages.tsv`.
+`coverages.pdf`: This is the summary of statistics exported by `samtools`, including the number of positions and percent of the genome covered by sequencing reads,  the total number of reads, and the mean read depth. This plot is created from the table `coverages.tsv`.
 
-`non_haploid_sites.txt`: The distribution of sites that have more than one probable allels assuming pooled sequencing. The first column represents the number of samples a given ‘non-haploid’ site occurs and the second column shows the position of such sites on the reference genome.
+`non_haploid_sites.txt`: The distribution of sites that have more than one probable allele assuming pooled sequencing. The first column represents the number of samples with a given ‘non-haploid’ site; the second column shows the position of such sites on the reference genome.
 
-The dominant genome of samples are exported in multifasta format and these filenames contain the date and time of the run.
+The dominant genome of samples is exported in multifasta format; these filenames contain the date and time of the run.
 
 `samples_multifasta_YEAR_MONTH_DAY_TIME.fa`: The dominant genome of samples in multifasta format before masking regions with no reads.
 
 `samples_multifasta_masked_YEAR_MONTH_DAY_TIME.fa`: The dominant genome of samples in multifasta format after masking regions with no reads.
 
-Main output directories containt subdirectories with the basename of each sample file. These directories include all files created for the given sample during the run, including the quality filtered reads , the short-read alignment with marked duplicates in `.bam` format, and statistics of sample files.
+Main output directories contain subdirectories with the basename of each sample file. These directories include all files created for the given sample during the run, including the quality-filtered reads, the short-read alignment with marked duplicates in `.bam` format, and statistics of sample files.
 
 `BASENAME_filter.html` and `BASENAME_filter.json`: These contain the summary of the quality filtering as output by `fastp`. Filtered reads are stored in `BASENAME_R1.fq.gz` and `BASENAME_R2.fq.gz`.
 
@@ -207,10 +268,10 @@ Main output directories containt subdirectories with the basename of each sample
 
 `BASENAME_SNPdensity.snpden` and `BASENAME_SNPdensity.snpden.pdf`: These files show the SNP-density along the reference genome in tabular and in `pdf` format.
 
-`BASENAME_vcfstats_p1.txt`: Assuming a given ploidy vcf statistics are stored in this file, which contain the total number of sites and the type of variants.
+`BASENAME_vcfstats_p1.txt`: Assuming a given ploidy vcf statistics are stored in this file, which contains the total number of sites and the type of variants.
 
 `BASENAME_pooled.vcf`, `BASENAME_pooled_GT.tsv` and `BASENAME_pooled_GT.pdf`: The variants observed when assuming pooled sequencing are stored in `vcf` and `tsv` format, whereas the frequency of allele-balance values are plotted and output in `pdf`.
 
-`BASENAME_vcfstats_pooled.txt`: Assuming pooled sequencing vcf statistics are stored in this file, which contain the total number of sites and the type of variants.
+`BASENAME_vcfstats_pooled.txt`: Assuming pooled sequencing vcf statistics are stored in this file, which contains the total number of sites and the type of variants.
 
-The fasta file `BASENAME_REFERENCE-SEQUENCE-ID.fa` contains the sequence of the dominant genome found in the given sample before the masking of non-sequenced regions and the masked genome sequence is stored in `BASENAME_masked.fasta`.
+The fasta file `BASENAME_REFERENCE-SEQUENCE-ID.fa` contains the sequence of the dominant genome found in the given sample before the masking of non-sequenced regions, and the masked genome sequence is stored in `BASENAME_masked.fasta`.

@@ -360,10 +360,25 @@ do
 
 			ls "${outdir}"/"${i}"/temps/*s.bam > "${outdir}"/"${i}"/bamlist
 
+			numfiles=$(wc -l "${outdir}"/"${i}"/bamlist | cut -f 1 -d " ")
+
+			limit=$(ulimit -n)
+
+			if [[ $numfiles -ge $limit ]]; then
+
+				newlimit=$(expr "$numfiles+100" | bc)
+				ulimit -n "$newlimit"
+			fi
+
 			samtools merge -@ "np" -b "${outdir}"/"${i}"/bamlist -f -o "${outdir}"/"${i}"/"${i}"_smooth.bam
+			rm "${outdir}"/"${i}"/bamlist
 			samtools sort -@ "$np" "${outdir}"/"${i}"/"${i}"_smooth.bam | samtools view -h -b -@ 6 > "${outdir}"/"${i}"/"${i}"_smooth_sort.bam
-			sambamba markdup -t "$np" "${outdir}"/"${i}"/"${i}"_smooth_sort.bam "${outdir}"/"${i}"/"${i}"_markdup.bam 2> /dev/null
+			mv "${outdir}"/"${i}"/"${i}"_smooth_sort.bam "${outdir}"/"${i}"/"${i}"_smooth.bam
+			sambamba markdup -r -t "$np" "${outdir}"/"${i}"/"${i}"_smooth.bam "${outdir}"/"${i}"/"${i}"_markdup.bam 2> /dev/null
 			samtools index "${outdir}"/"${i}"/"${i}"_markdup.bam
+
+			rm -r "${outdir}"/"${i}"/temps
+			rm -r "${outdir}"/"${i}"/loc
 		fi
 	fi
 done
@@ -446,7 +461,7 @@ for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
 		vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf > "${outdir}"/"${i}"/"${i}"_p"${ploidy}"_filt.vcf
-		mv "${outdir}"/"${i}"/"${i}"_p"${ploidy}"_filt.vcf "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf 
+		mv "${outdir}"/"${i}"/"${i}"_p"${ploidy}"_filt.vcf "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf
 		vcftools --vcf "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf  --SNPdensity "${snpwindow}" --out "${outdir}"/"${i}"/"${i}"_SNPdensity 2> /dev/null
 	fi
 done
@@ -454,9 +469,9 @@ done
 for i in $inds
 do
 	if [[ -f ${outdir}/${i}/${i}_p${ploidy}.vcf ]]; then
+		cd "${outdir}"/"${i}"
 		vcfstats "${outdir}"/"${i}"/"${i}"_p"${ploidy}".vcf > "${outdir}"/"${i}"/"${i}"_vcfstats_p"${ploidy}".txt
 		echo "##### vcf statistics can be found at ${outdir}/${i}/${i}_vcfstats_p${ploidy}.txt #####"
-		cd "${outdir}"/"${i}"
 		vcf2fasta -f "$ref_db" "${i}"_p"${ploidy}".vcf
 		bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' "${i}"_p"${ploidy}".vcf > "${i}"_p"${ploidy}"_GT.tsv 2> /dev/null
 	fi
@@ -508,8 +523,7 @@ do
 		cd "${outdir}"/"${i}"
 		cut -f 5 "${i}"_pooled_GT.tsv | perl -pe "s/,/\n/g" > "${i}"_pooled_AB.tsv
 		Rscript "${outdir}"/plot_AB.R "${i}"_pooled_AB.tsv &> /dev/null
-		echo "##### Plotting AB distribution of ${i} #####"  #COMMENT
-		#rm "${i}"_pooled_AB.tsv
+		echo "##### Plotting AB distribution of ${i} #####"
 	fi
 done
 
@@ -523,8 +537,6 @@ for i in $inds
 do
 	echo "$i"
 	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]]; then
-#		samtools faidx "${outdir}"/"${i}"/"${i}"*.fa #should be the only fasta; if not unexpected behavior may follow, watch out!
-#		cut -f 1-2 "${outdir}"/"${i}"/"${i}"*.fa.fai > "${outdir}"/"${i}"/"${i}".genomfile
 		bioawk -c fastx '{print $name, length($seq)}' "${outdir}"/"${i}"/"${i}"*.fa > "${outdir}"/"${i}"/"${i}".genomfile
 		bwa index "${outdir}"/"${i}"/"${i}"*.fa
 
@@ -543,19 +555,12 @@ do
 		fi
 
 		echo "##### Finding and masking blocks with < ${fb_min_cov} reads and potential clipped high-coverage regions #####"
-		#bedtools bamtobed -i "${outdir}"/"${i}"/realigned.bam | bedtools merge -i - > "${outdir}"/"${i}"/realigned.bed
-		#bedtools complement -i "${outdir}"/"${i}"/realigned.bed -g "${outdir}"/"${i}"/"${i}".genomfile > "${outdir}"/"${i}"/complement
 		bedtools genomecov -ibam "${outdir}"/"${i}"/realigned.bam -d | awk -v mincov="$fb_min_cov" '$3 < mincov' | awk 'OFS="\t"{print $1, $2-1, $2}' | bedtools merge -i - > "${outdir}"/"${i}"/complement
 		bedtools maskfasta -fi "${outdir}"/"${i}"/"${i}"*.fa -bed "${outdir}"/"${i}"/complement -fo "${outdir}"/"${i}"/"${i}"_masked.fasta
 	fi
 done
 
 find "${outdir}"/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_masked_${uniqid}.fa"
-
-find "${outdir}" -name "complement" | xargs rm 
-#find "${outdir}" -name "realigned.bam" | xargs rm
-#find "${outdir}" -name "realigned.bed" | xargs rm 
-
 
 if [[ "$annot" == "no" ]]; then
 	echo 'args<-commandArgs(TRUE)
@@ -600,15 +605,29 @@ elif [[ "$annot" == "yes" ]]; then
 	do
 		if [[ -f ${outdir}/${i}/${i}_SNPdensity.snpden ]]; then
 			cd "${outdir}"/"${i}"
-			liftoff -g "$gff" -mismatch 10000 -a 0.01 -f "${outdir}"/feature.types -o "${i}".gff "${i}"_masked.fasta "$ref_db" &> /dev/null
+			liftoff -p "$np" -g "$gff" -mismatch 10000 -a 0.01 -f "${outdir}"/feature.types -o "${i}".gff "${i}"_masked.fasta "$ref_db" &> /dev/null
 			grep -v "^#" "${i}".gff | awk '$3 != "CDS"' | awk '$3 != "region"' | cut -f 4,5,9 | sed -e "s/\tID.*Name=/\t/" -e "s/\tID.*gbkey=/\t/" | cut -f 1 -d";" > "${i}"_regions.tsv
 			Rscript "${outdir}"/plot_density.R "${i}"_SNPdensity.snpden "${i}"_regions.tsv
 			echo "##### Plotting SNP density distribution of ${i} #####"  #COMMENT
+			rm -r "${outdir}"/"${i}"/intermediate_files
+			rm -r "${outdir}"/"${i}"/*mmi
 		fi
 	done
+	rm "${outdir}"/feature.types
 fi
 
 rm "${outdir}"/plot*R
+rm "${outdir}"/bedfile
+rm "${outdir}"/gfile
+find "${outdir}"/*/ -name "complement" | xargs rm
+find "${outdir}"/*/ -name "realigned.bam" | xargs rm
+find "${outdir}"/*/ -name "*fastq" | xargs rm
+find "${outdir}"/*/ -name "*bwt" | xargs rm
+find "${outdir}"/*/ -name "*pac" | xargs rm
+find "${outdir}"/*/ -name "*amb" | xargs rm
+find "${outdir}"/*/ -name "*ann" | xargs rm
+find "${outdir}"/*/ -name "*sa" | xargs rm
+find "${outdir}"/*/ -name "*.genomfile" | xargs rm
 
 echo "Run ended at $(date)"
 #end
