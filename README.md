@@ -64,7 +64,7 @@ Dependencies are the following (the way to install them one by one is given in c
 
   `conda install -c bioconda bwa`
 
-- [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics. Please, make sure that the samtools version used is > 1.10.
+- [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics.
 
   `conda install -c bioconda samtools=1.15.1`
 
@@ -106,7 +106,7 @@ Dependencies are the following (the way to install them one by one is given in c
 
 Software installed with conda is added automatically to the $PATH variable if `miniconda` is configured correctly.
 
-`R` and `Rscript` are not included in the provided `.yaml` file and should be installed manually. This is because even the newest R version installed with conda might have dependency issues at some systems (conflict of dependencies). Please ensure that `R` is installed correctly and added to your `$PATH` variable. A similar issue sometimes can be observed with samtools. Please ensure that typing `samtools` to your terminal does not throw any errors. In the provided `.yaml` file, `samtools 1.15.1` is included and is recommended to run the pipeline, but any version of this software above v1.10 should work correctly.
+`R` and `Rscript` are not included in the provided `.yaml` file and should be installed manually. This is because even the newest R version installed with conda might have dependency issues at some systems (conflict of dependencies). Please ensure that `R` is installed correctly and added to your `$PATH` variable. A similar issue sometimes can be observed with samtools. Please ensure that typing `samtools` to your terminal does not throw any errors. In the provided `.yaml` file, `samtools 1.15.1` is included and is recommended.
 
 ## Details
 
