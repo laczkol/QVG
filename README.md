@@ -64,7 +64,7 @@ Dependencies are the following (the way to install them one by one is given in c
 
   `conda install -c bioconda bwa`
 
-- [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics. Please, make sure that the samtools version used is > 1.10.
+- [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics.
 
   `conda install -c bioconda samtools=1.15.1`
 
