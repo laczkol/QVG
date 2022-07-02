@@ -1,0 +1,39 @@
+#NEXUS 
+
+Begin trees;  [Treefile saved Sat Jul  2 21:09:06 2022]
+[!
+>Data file = tmp.nex
+>Neighbor-joining search settings:
+>  Ties (if encountered) will be broken systematically
+>  Distance measure = HKY85
+>  610 characters are excluded
+>  All characters have equal weight
+>  (Tree is unrooted)
+]
+	Translate
+		1 SRR12535938_NC_00397,
+		2 AHBVADW2,
+		3 AHVHEPB,
+		4 AG527295,
+		5 BHPBADW1,
+		6 BAB010289,
+		7 CHEHBVAYR,
+		8 CHPBADRA,
+		9 C22Y04HCC,
+		10 NC_003977,
+		11 DHBVPRES12,
+		12 DHPBHBVAA,
+		13 EHHVBBAS,
+		14 EHBVCh195,
+		15 FHBVADW4A,
+		16 FVNZ8251,
+		17 FC1858,
+		18 GIG29227,
+		19 GUSG769,
+		20 G23501,
+		21 H1853Nic,
+		22 H2928Nic,
+		23 HLAS2523
+		;
+tree 'PAUP_1' = [&U] ((((((1:0.012515,(10:0.007235,11:0.013104):0.001163):0.006625,12:0.019730):0.026036,(13:0.004441,14:0.007368):0.033461):0.010901,(18:0.000578,(19:0.001870,20:0.000400):0.000179):0.053759):0.003281,((((2:0.010099,3:0.009859):0.016181,4:0.022583):0.017622,(5:0.007919,6:0.007352):0.040426):0.004764,(7:0.009840,(8:0.012371,9:0.010325):0.001090):0.038269):0.007750):0,((15:0.019451,(16:0.018867,17:0.021645):0.001787):0.020790,((21:0.004385,22:0.002829):0.008005,23:0.010881):0.027999):0.052108);
+End;
