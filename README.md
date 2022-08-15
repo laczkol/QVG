@@ -110,6 +110,10 @@ NOTE: Copying the above code-block will install the dependencies one by one. Ins
 
 `R` and `Rscript` are not included in the provided `.yaml` file and should be installed manually. This is because even the newest R version installed with conda might have dependency issues at some systems (conflict of dependencies). Please ensure that `R` is installed correctly and added to your `$PATH` variable. A similar issue sometimes can be observed with samtools. Please ensure that typing `samtools` to your terminal does not throw any errors. In the provided `.yaml` file, `samtools 1.15.1` is included and is recommended.
 
+After cloning the repository and installing the dependencies, it is advised to check if all dependencies can be found correctly and if the pipeline works as expected. The repository contains a small subset of SARS-CoV2 sequencing reads and a reference genome with the corresponding annotation. To check if the pipeline works using these test data, please, run `./run_test.sh` from the directory where the repository was cloned. If the output correctly tells when the run ended, QVG should work correctly on real data. If a line starting with `Run ended` is not output to the screen, the pipeline stopped somewhere during the analysis. Additionally, this test looks for some main output files of the pipeline, namely, the consensus genome sequence, the sites variable within-host, and the transferred genome annotation. If the test tells all these files were found, the installation of QVG is correct; otherwise, the availability of dependencies should be double-checked.
+
+The help menu of the pipeline can be invoked by typing `QVG.sh -h` or `QVG.sh --help`, whereas the pipeline's version can be checked by typing `QVG.sh -v` or `QVG.sh --version`.
+
 ## Details
 
 The pipeline can be parametrized from the command line. The two mandatory options to run the pipeline are the following:
@@ -240,10 +244,6 @@ The screening of within-host variable sites can be turned off by the following o
 -pool or --pooled-sequencing
   Valid options are yes or no. Turns on or off the screening of within-host variability. If no such sites are expected it is advised to turn off this feature. [default yes]
 ````
-
-After cloning the repository and installing the dependencies, it is advised to check if all dependencies can be found correctly and if the pipeline works as expected. The repository contains a small subset of SARS-CoV2 sequencing reads and a reference genome with the corresponding annotation. To check if the pipeline works using these test data, please, run `./run_test.sh` from the directory where the repository was cloned. If the output correctly tells when the run ended, QVG should work correctly on real data. If a line starting with `Run ended` is not output to the screen, the pipeline stopped somewhere during the analysis. Additionally, this test looks for some main output files of the pipeline, namely, the consensus genome sequence, the sites variable within-host, and the transferred genome annotation. If the test tells all these files were found, the installation of QVG is correct; otherwise, the availability of dependencies should be double-checked.
-
-The help menu of the pipeline can be invoked by typing `QVG.sh -h` or `QVG.sh --help`, whereas the pipeline's version can be checked by typing `QVG.sh -v` or `QVG.sh --version`.
 
 A typical command to run `QVG.sh` including the annotation step, would look like the following:
 
