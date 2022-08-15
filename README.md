@@ -16,21 +16,23 @@ This pipeline is designed to genotype targeted viral strains quickly. The input 
 
 The recommended installation of QVG is to clone this repository with the following command from GitHub: 
 
-  ```
+```
 git clone https://github.com/laczkol/QVG.git 
-  ```
+```
 
-After cloning, using the `conda` package manager, dependencies specified in ` qvg-env.yaml ` file can be easily installed by navigating to the copied directory and typing this line into the terminal:
+After cloning, using the `conda` package manager, dependencies specified in ` qvg-env.yaml ` file can be easily installed by navigating to the copied directory and creating a `conda` environment for QVG:
 
-  ```
+```
+cd ./QVG/
 conda create --name qvg-env --file qvg-env.yaml 
-  ```
+```
 
+Creating a conda environment ensures that dependencies can be found correctly and eliminates conflicts between different software versions; thus, this is the preferred way to install QVG. If Miniconda is not yet installed, please, visit [this site](https://docs.conda.io/en/latest/miniconda.html) to obtain it.
 After that, the newly created environment with all dependencies installed can be activated by typing the following in the terminal:
 
-  ````
+````
 conda activate qvg-env
-  ````
+````
 
 This way, all dependencies except R and R Script will be installed and added to `$PATH`. R should be installed manually (see Dependencies).
 
@@ -58,53 +60,53 @@ Dependencies are the following (the way to install them one by one is given in c
 
 - [fastp](https://github.com/OpenGene/fastp) for filtering the raw reads
 
-  `conda install -c bioconda fastp`
-
 - [bwa](http://bio-bwa.sourceforge.net/) to align the short reads to a reference genome
-
-  `conda install -c bioconda bwa`
 
 - [samtools](http://www.htslib.org/) and [HTSlib](http://www.htslib.org/) for `sam` to `bam` conversion and to output alignment statistics.
 
-  `conda install -c bioconda samtools=1.15.1`
-
 - [sambamba](https://lomereiter.github.io/sambamba/) to mark duplicate alignments
-
-  `conda install -c bioconda sambamba=0.8.2`
 
 - [freebayes](https://github.com/freebayes/freebayes) for variant calling
 
-  `conda install -c bioconda freebayes`
-
 - [bcftools](https://samtools.github.io/bcftools/bcftools.html) to export variants and allele balance in tabular format
-
-  `conda install -c bioconda bcftools`
 
 - vcf2fasta, vcfstats and vcffilter from the [vcflib](https://github.com/vcflib/vcflib) for file conversion, exporting vcf statistics and variant filtering
 
-  `conda install -c bioconda vcflib`
-
 - [vcftools](http://vcftools.sourceforge.net/) to filter for missingness
-
-  `conda install -c bioconda vcftools`
 
 - [bedtools](https://bedtools.readthedocs.io/en/latest/) to mask the genomic regions with no reads
 
-  `conda install -c bioconda bedtools`
-
-- [liftoff](https://github.com/agshumate/Liftoff) to annotate genomic regions
-
-  `conda install -c bioconda  liftoff minimap=2.17`
+- [liftoff](https://github.com/agshumate/Liftoff) and [minimap2](https://github.com/lh3/minimap2
+) to annotate genomic regions
 
 - [R](https://www.r-project.org/) and [Rscript](https://rdrr.io/r/utils/Rscript.html) for visualization. Installation of R is detailed its own website. Most GNU/Linux distributions can install `R` using its official repository.
 
 - [GNU parallel](https://www.gnu.org/software/parallel/) to run tasks in parallel
 
-  `conda install -c conda-forge parallel`
+- [bioawk](https://github.com/lh3/bioawk) for the basic processing of fasta sequences.
 
 - [GNU Core Utilities](https://www.gnu.org/software/coreutils/) is practically the spine of the pipeline. It is used in most `bash` scripts and should be pre-installed on most GNU/Linux-based operating systems.
 
-Software installed with conda is added automatically to the $PATH variable if `miniconda` is configured correctly.
+Software installed with conda is added automatically to the `$PATH` variable if `miniconda` is configured correctly.
+
+All dependencies can be installed in the current environment by copying the following lines to the terminal:
+
+```
+conda install -y -c bioconda fastp
+conda install -y -c bioconda bwa
+conda install -y -c bioconda samtools=1.15.1
+conda install -y -c bioconda sambamba=0.8.2
+conda install -y -c bioconda freebayes
+conda install -y -c bioconda bcftools
+conda install -y -c bioconda vcflib
+conda install -y -c bioconda vcftools
+conda install -y -c bioconda bedtools
+conda install -y -c bioconda liftoff minimap=2.17
+conda install -y -c conda-forge parallel
+conda install -y -c bioconda bioawk
+```
+
+NOTE: Copying the above code-block will install the dependencies one by one. Installing them in a single command with channels correctly specified the same effect should be achieved (`conda install -y -c bioconda -c conda-forge fastp bwa samtools=1.15.1 sambamba=0.8.2 freebayes bcftools vcflib vcftools bedtools liftoff minimap=2.17 parallel bioawk`). **Using the option `-y' will install the required tools in the current environment without the need to confirm the action. Please, make sure that installing the above dependencies does not interfere with other tools used on the same computer in the same environment or create a virtual environment for QVG as shown above.**
 
 `R` and `Rscript` are not included in the provided `.yaml` file and should be installed manually. This is because even the newest R version installed with conda might have dependency issues at some systems (conflict of dependencies). Please ensure that `R` is installed correctly and added to your `$PATH` variable. A similar issue sometimes can be observed with samtools. Please ensure that typing `samtools` to your terminal does not throw any errors. In the provided `.yaml` file, `samtools 1.15.1` is included and is recommended.
 
@@ -116,7 +118,7 @@ The pipeline can be parametrized from the command line. The two mandatory option
  -r or --reference-genome
  	The reference genome sequence in .fasta format. The reference should contain only one contig.
  -samples-list or --samples-list
-	A text file that listing sample file basenames to be included in the analysis
+	A text file listing sample file basenames to be included in the analysis.
 ```
 
 Please ensure that the file specified with `-samples-list` contains only the basenames of sample files and does not contain any headers, extra new-line characters, and empty lines. For example, this text file to include paired-end reads of five samples named S1, S2, S3, S4, and S5 would look like the following:
@@ -207,32 +209,41 @@ The pipeline, by default, clips alignments at high-coverage regions that can be 
 
 ````
 -cw or --clip-window
-	The sliding window size used to assess read depth [default = 100]
+	The sliding window size used to assess read depth. [default = 100]
 -cs or --clip-step
-	The step size of sliding windows [default = 10]
+	The step size of sliding windows. [default = 10]
 -hc or --high-coverage
-	The mean read depth is assessed for each sample file. This value is used to multiply the mean read depth and define the read depth threshold of regions to be clipped [default = 10]
+	The mean read depth is assessed for each sample file. This value is used to multiply the mean read depth and define the read depth threshold of regions to be clipped. [default = 10]
 ````
 
 Optionally, the read depth of alignments can be smoothed out along the reference genome (can be useful to decrease read depth bias). The following options can parametrize this feature: 
 
 ````
 -sc or --smooth-coverage
-	Defines if coverage smoothing should be done [default = no]
+	Defines if coverage smoothing should be done. [default = no]
 -smoothw or --smooth-window
-	The consecutive window size of random resampling [default = 100]
+	The consecutive window size of random resampling. [default = 100]
 -scount or --smooth-count
-	Read count within the window for resampling [default = 500]
+	Read count within the window for resampling. [default = 500]
 ````
 
-Optionally, a `.gff` file can be specified to transfer the annotations of the reference.
+Optionally, a `.gff` file can be specified to transfer the annotations of the reference. If a `.gff` file is supplied annotation transfer is automatically turned on.
 
 ````
--annot or --annotate
-	Valid options are yes or no. Specifies if annotation transfer should be carried out.
 -g or --gff-file
 	The .gff file containing the gene annotations of the reference.
 ````
+
+The screening of within-host variable sites can be turned off by the following option:
+
+````
+-pool or --pooled-sequencing
+  Valid options are yes or no. Turns on or off the screening of within-host variability. If no such sites are expected it is advised to turn off this feature. [default yes]
+````
+
+After cloning the repository and installing the dependencies, it is advised to check if all dependencies can be found correctly and if the pipeline works as expected. The repository contains a small subset of SARS-CoV2 sequencing reads and a reference genome with the corresponding annotation. To check if the pipeline works using these test data, please, run `./run_test.sh` from the directory where the repository was cloned. If the output correctly tells when the run ended, QVG should work correctly on real data. If a line starting with `Run ended` is not output to the screen, the pipeline stopped somewhere during the analysis. Additionally, this test looks for some main output files of the pipeline, namely, the consensus genome sequence, the sites variable within-host, and the transferred genome annotation. If the test tells all these files were found, the installation of QVG is correct; otherwise, the availability of dependencies should be double-checked.
+
+The help menu of the pipeline can be invoked by typing `QVG.sh -h` or `QVG.sh --help`, whereas the pipeline's version can be checked by typing `QVG.sh -v` or `QVG.sh --version`.
 
 A typical command to run `QVG.sh` including the annotation step, would look like the following:
 

@@ -1,6 +1,70 @@
 #!/bin/bash
 set -euo pipefail -euo nounset
 
+hm="QVG (Quick Viral genome Genotyper) v.0.8.1\n\n
+Required input files:\n
+ -r or --reference-genome\n\t				The reference genome sequence in .fasta format. The reference should contain only one contig.\n\n
+ -samples-list or --samples-list\n\t		A text file listing sample file basenames to be included in the analysis.\n\n
+
+Optional parameters:\n
+-s or --samples-directory\n\t				The input directory containing the sample files listed in list_of_samples.txt.\n\n
+-o or --output-directory\n\t				The output directory to store all the output files of the pipeline.\n\n
+-bwa_k or --min-seed-length\n\t				The minimum seed length parameter of bwa. Used during short-read alignment. [default = 19]\n\n
+-bwa_A or --matching-score\n\t				The matching score parameter of bwa. Used during short-read alignment. [default = 1]\n\n
+-bwa_B or --mismatch-penalty\n\t			The mismatch penalty score of bwa. Used during short-read alignment. [default = 4]\n\n
+-bwa_O or --gap-open-penalty\n\t			The gap opening penalty score of bwa. Used during short-read alignment. [default = 6]\n\n
+-type or --sequencing-type\n\t				The pipeline can use both singe-end and paired-end reads. The default is paired-end (PE). Setting this parameter to SE will look for single-end read files.\n\n
+-trim_front1 or --trim-front1\n\t			The number of bases to be trimmed from the beginning of R1 reads. [default = 10]\n\n
+-trim_front2 or --trim-front2\n\t			The number of bases to be trimmed from the beginning of R2 reads. [default = 10]\n\n
+-trim_tail1 or --trim-tail1\n\t				The number of bases to be trimmed from the end of R1 reads. [default = 10]\n\n
+-trim_tail2 or --trim-tail2\n\t				The number of bases to be trimmed from the end of R2 reads. [default = 10]\n\n
+-minlen or --min-read-length\n\t			The minimum length of reads to be included after quality filtering. [default = 30]\n\n
+-p or --fb-ploidy\n\t						Ploidy assumed for variant calling. [default = 1 for the first variant calling]\n\n
+-Q or --fb-mismatch-base-quality-threshold\n\t	The quality of the mismatched base to be included in the variant calling. [default = 30]\n\n
+-m or --fb-min-mapping-quality\n\t			The minimum mapping quality for a read to be included in the variant calling. [default = 30]\n\n
+-mc or --fb-min-coverage\n\t				Minimum coverage of a variant to be considered. [default = 5]\n\n
+-n or --fb-best-alleles\n\t					Number of most probable alleles to be considered for variant calling. [default = 5]\n\n
+-F or --fb-min-alternate-fraction\n\t		Minimal supporting fraction of reads for an alternate allele. [default = 0.2]\n\n
+-mvq or --min-variant-quality\n\t			Minimum quality of a variant to be kept. [default = 10]\n\n
+-mqa or --min-qual-ao\n\t					Minimum ratio of variant quality and observation count to be kept. [default = 10]\n\n
+-sw or --snp-window\n\t						Size of the sliding window to check for SNP-density. [default = 1000]\n\n
+-mincov or --minimum-coverage\n\t			The percent of the reference genome that should be covered to include a sample file in the analysis. [default = 95]\n\n
+-cw or --clip-window\n\t					The sliding window size used to assess read depth. [default = 100]\n\n
+-cs or --clip-step\n\t						The step size of sliding windows. [default = 10]\n\n
+-hc or --high-coverage\n\t					The mean read depth is assessed for each sample file. This value is used to multiply the mean read depth and define the read depth threshold of regions to be clipped. [default = 10]\n\n
+-sc or --smooth-coverage\n\t				Defines if coverage smoothing should be done. [default = no]\n\n
+-smoothw or --smooth-window\n\t				The consecutive window size of random resampling. [default = 100]\n\n
+-scount or --smooth-count\n\t				Read count within the window for resampling. [default = 500]\n\n
+-g or --gff-file\n\t						The .gff file containing the gene annotations of the reference. If provided the annotation transfer is automatically turned on.\n\n
+-pool or --pooled-sequencing\n\t			Valid options are yes or no. Turns on or off the screening of within-host variability. If no such sites are expected it is advised to turn off this feature. [default yes]\n\n\n
+
+-h or --help\n\t							This help menu.\n\n
+-v or --version\n\t							Version information of QVG.\n\n\n
+
+Example:\n
+QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt -s ./fastq_files -o ./output_files -annot yes -g reference_genome.gff3 -np <number_of_threads>\n
+"
+
+if [[ $1 == "-h" || $1 == "--help" ]]; then
+	echo -e $hm
+	exit 1
+fi
+
+if [[ $1 == "-v" || $1 == "--version" ]]; then
+	echo -e "QVG (Quick Viral genome Genotyper) version 0.8.1"
+	exit 1
+fi
+
+
+cat <<'END_FIGLET'
+  _____     ______
+ / _ \ \   / / ___|
+| | | \ \ / / |  _
+| |_| |\ V /| |_| |
+ \__\_\ \_/  \____|
+             v0.8.1
+END_FIGLET
+
 echo "Run started at $(date)"
 
 cdir=$(pwd)
@@ -40,6 +104,7 @@ hcm=10
 smooth_coverage="no"
 smooth_window=100
 smooth_count=500
+pool="yes"
 
 while [[ "$#" -gt 0 ]];
 	do
@@ -178,6 +243,10 @@ while [[ "$#" -gt 0 ]];
 			;;
 		-g|--gff-file)
 			gff=$2
+			shift
+			;;
+		-pool|--pooled-sequencing)
+			pool=$2
 			shift
 			;;
 		*) echo "Unknown parameter passed: $1"
@@ -483,54 +552,60 @@ find "${outdir}"/*/*.fa | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/sa
 
 echo "##### Calling variant sites using $np parallel threads assuming pooled sequencing. Threads are split by sample files. #####"
 
-for i in $inds
-do
-	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
-		echo "freebayes -f $ref_db -b ${outdir}/${i}/${i}_markdup.bam -n $nbest --min-coverage $fb_min_cov --pooled-continuous -F $altfrac -q $minqual -Q $mismatchqual -m $mapq -w -V -a -j -E -1 > ${outdir}/${i}/${i}_pooled.vcf"
-	fi
-done | parallel -j "$np"
+if [[ $pool == "yes" ]];then
 
-for i in $inds
-do
-	if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
-		vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" "${outdir}"/"${i}"/"${i}"_pooled.vcf > "${outdir}"/"${i}"/"${i}"_pooled_filt.vcf
-		mv "${outdir}"/"${i}"/"${i}"_pooled_filt.vcf "${outdir}"/"${i}"/"${i}"_pooled.vcf
-	fi
-done
+	for i in $inds
+	do
+		if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
+			echo "freebayes -f $ref_db -b ${outdir}/${i}/${i}_markdup.bam -n $nbest --min-coverage $fb_min_cov --pooled-continuous -F $altfrac -q $minqual -Q $mismatchqual -m $mapq -w -V -a -j -E -1 > ${outdir}/${i}/${i}_pooled.vcf"
+		fi
+	done | parallel -j "$np"
 
-for i in $inds
-do
-	if [[ -f ${outdir}/${i}/${i}_pooled.vcf ]]; then
-		vcfstats "${outdir}"/"${i}"/"${i}"_pooled.vcf > "${outdir}"/"${i}"/"${i}"_vcfstats_pooled.txt
-		echo "##### vcf statistics can be found at ${outdir}/${i}/${i}_vcfstats_pooled.txt #####"
-		cd "${outdir}"/"${i}"/
-		bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' "${i}"_pooled.vcf > "${i}"_pooled_GT.tsv 2> /dev/null
-	fi
-done
+	for i in $inds
+	do
+		if [[ -f ${outdir}/${i}/${i}_markdup.bam ]];then
+			vcffilter -f "QUAL > ${min_var_qual} & QUAL / AO > ${min_qual_ao}" "${outdir}"/"${i}"/"${i}"_pooled.vcf > "${outdir}"/"${i}"/"${i}"_pooled_filt.vcf
+			mv "${outdir}"/"${i}"/"${i}"_pooled_filt.vcf "${outdir}"/"${i}"/"${i}"_pooled.vcf
+		fi
+	done
 
-echo 'args<-commandArgs(TRUE)
-x<-read.csv(args[1], sep="\t")
-head(x)
-name<-paste(args[1], ".pdf", sep="")
-name<-gsub(".tsv.", ".", name)
-pdf(name, width=20)
-hist(x$X.5.AB, main=args[1], xlab="Allele balance")
-dev.off()' > "${outdir}"/plot_AB.R
+	for i in $inds
+	do
+		if [[ -f ${outdir}/${i}/${i}_pooled.vcf ]]; then
+			vcfstats "${outdir}"/"${i}"/"${i}"_pooled.vcf > "${outdir}"/"${i}"/"${i}"_vcfstats_pooled.txt
+			echo "##### vcf statistics can be found at ${outdir}/${i}/${i}_vcfstats_pooled.txt #####"
+			cd "${outdir}"/"${i}"/
+			bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT\t%AB\t[\t%GT]\n' "${i}"_pooled.vcf > "${i}"_pooled_GT.tsv 2> /dev/null
+		fi
+	done
 
-for i in $inds
-do
-	if [[ -f ${outdir}/${i}/${i}_pooled_GT.tsv ]]; then
-		cd "${outdir}"/"${i}"
-		cut -f 5 "${i}"_pooled_GT.tsv | perl -pe "s/,/\n/g" > "${i}"_pooled_AB.tsv
-		Rscript "${outdir}"/plot_AB.R "${i}"_pooled_AB.tsv &> /dev/null
-		echo "##### Plotting AB distribution of ${i} #####"
-	fi
-done
+	echo 'args<-commandArgs(TRUE)
+	x<-read.csv(args[1], sep="\t")
+	head(x)
+	name<-paste(args[1], ".pdf", sep="")
+	name<-gsub(".tsv.", ".", name)
+	pdf(name, width=20)
+	hist(x$X.5.AB, main=args[1], xlab="Allele balance")
+	dev.off()' > "${outdir}"/plot_AB.R
+
+	for i in $inds
+	do
+		if [[ -f ${outdir}/${i}/${i}_pooled_GT.tsv ]]; then
+			cd "${outdir}"/"${i}"
+			cut -f 5 "${i}"_pooled_GT.tsv | perl -pe "s/,/\n/g" > "${i}"_pooled_AB.tsv
+			Rscript "${outdir}"/plot_AB.R "${i}"_pooled_AB.tsv &> /dev/null
+			echo "##### Plotting AB distribution of ${i} #####"
+		fi
+	done
+
+	cd "$cdir"
+
+	echo "##### Exporting distribution of sites with more than one allele across samples to ${outdir}/non_haploid_sites.txt #####"
+	find "${outdir}" -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > "${outdir}"/non_haploid_sites.txt # instead check for allele balance and export sites with AB > 0
+
+fi
 
 cd "$cdir"
-
-echo "##### Exporting distribution of sites with more than one allele across samples to ${outdir}/non_haploid_sites.txt #####"
-find "${outdir}" -name *pooled.vcf | xargs grep '0/1:' | cut -f 2 | sort -n | uniq -c > "${outdir}"/non_haploid_sites.txt # instead check for allele balance and export sites with AB > 0
 
 echo "##### Masking of low-depth positions in the consensus fasta files. #####"
 for i in $inds
@@ -562,7 +637,7 @@ done
 
 find "${outdir}"/*/*masked.fasta | xargs cat | sed -e 's/\.//' -e 's/://' > "${outdir}/samples_multifasta_masked_${uniqid}.fa"
 
-if [[ "$annot" == "no" ]]; then
+if [ ! -f "$gff" ]; then
 	echo 'args<-commandArgs(TRUE)
 	x<-read.csv(args[1], sep="\t")
 	name<-paste(args[1], ".pdf", sep="")
@@ -582,11 +657,7 @@ if [[ "$annot" == "no" ]]; then
 
 	cd "$cdir"
 
-elif [[ "$annot" == "yes" ]]; then
-	if [[ ${#gff} -le 1 ]]; then
-		echo "Please specify reference genome"
-		exit 1
-	fi
+elif [ -f "$gff" ]; then
 
 	echo 'args<-commandArgs(TRUE)
 	x<-read.csv(args[1], sep="\t")
@@ -598,6 +669,8 @@ elif [[ "$annot" == "yes" ]]; then
 	rect(xleft=regions$V1, xright = regions$V2, ybottom=max(x$VARIANTS.KB), ytop=max(x$VARIANTS.KB)+1, col=c("#BEBEBE50","#A9A9A950"))
 	text(x = (regions$V2+regions$V1)/2, y = max(x$VARIANTS.KB)+1.5, labels = regions$V3, srt=90, cex=0.8)
 	dev.off()' > "${outdir}"/plot_density.R
+
+	echo "##### Transfering annotations #####"
 
 	cut -f 3 "$gff" | grep -v "#" | sort | uniq > ${outdir}/feature.types
 
