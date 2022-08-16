@@ -45,28 +45,6 @@ Example:\n
 QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt -s ./fastq_files -o ./output_files -annot yes -g reference_genome.gff3 -np <number_of_threads>\n
 "
 
-if [[ $1 == "-h" || $1 == "--help" ]]; then
-	echo -e $hm
-	exit 1
-fi
-
-if [[ $1 == "-v" || $1 == "--version" ]]; then
-	echo -e "QVG (Quick Viral genome Genotyper) version 0.8.1"
-	exit 1
-fi
-
-
-cat <<'END_FIGLET'
-  _____     ______
- / _ \ \   / / ___|
-| | | \ \ / / |  _
-| |_| |\ V /| |_| |
- \__\_\ \_/  \____|
-             v0.8.1
-END_FIGLET
-
-echo "Run started at $(date)"
-
 cdir=$(pwd)
 indir=$(pwd)
 outdir=$(pwd)
@@ -249,12 +227,31 @@ while [[ "$#" -gt 0 ]];
 			pool=$2
 			shift
 			;;
+		-h|--help)
+			echo "$hm"
+			exit 1
+			;;
+		-v|--version)
+			echo "0.8.1"
+			exit 1
+			;;
 		*) echo "Unknown parameter passed: $1"
 			exit 1
 			;;
 	esac
 	shift
 done
+
+cat <<'END_FIGLET'
+  _____     ______
+ / _ \ \   / / ___|
+| | | \ \ / / |  _
+| |_| |\ V /| |_| |
+ \__\_\ \_/  \____|
+             v0.8.1
+END_FIGLET
+
+echo "Run started at $(date)"
 
 depends="fastp bwa samtools sambamba freebayes bcftools vcf2fasta vcfstats vcffilter vcftools bedtools bioawk R Rscript" #samtools needs to be at least 1.10!
 
