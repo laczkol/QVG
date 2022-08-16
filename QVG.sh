@@ -3,43 +3,43 @@ set -euo pipefail -euo nounset
 
 hm="QVG (Quick Viral genome Genotyper) v.0.8.1\n\n
 Required input files:\n
- -r or --reference-genome\n\t				The reference genome sequence in .fasta format. The reference should contain only one contig.\n\n
- -samples-list or --samples-list\n\t		A text file listing sample file basenames to be included in the analysis.\n\n
+ -r or --reference-genome\n\t The reference genome sequence in .fasta format. The reference should contain only one contig.\n\n
+ -samples-list or --samples-list\n\t A text file listing sample file basenames to be included in the analysis.\n\n
 
 Optional parameters:\n
--s or --samples-directory\n\t				The input directory containing the sample files listed in list_of_samples.txt.\n\n
--o or --output-directory\n\t				The output directory to store all the output files of the pipeline.\n\n
--bwa_k or --min-seed-length\n\t				The minimum seed length parameter of bwa. Used during short-read alignment. [default = 19]\n\n
--bwa_A or --matching-score\n\t				The matching score parameter of bwa. Used during short-read alignment. [default = 1]\n\n
--bwa_B or --mismatch-penalty\n\t			The mismatch penalty score of bwa. Used during short-read alignment. [default = 4]\n\n
--bwa_O or --gap-open-penalty\n\t			The gap opening penalty score of bwa. Used during short-read alignment. [default = 6]\n\n
--type or --sequencing-type\n\t				The pipeline can use both singe-end and paired-end reads. The default is paired-end (PE). Setting this parameter to SE will look for single-end read files.\n\n
--trim_front1 or --trim-front1\n\t			The number of bases to be trimmed from the beginning of R1 reads. [default = 10]\n\n
--trim_front2 or --trim-front2\n\t			The number of bases to be trimmed from the beginning of R2 reads. [default = 10]\n\n
--trim_tail1 or --trim-tail1\n\t				The number of bases to be trimmed from the end of R1 reads. [default = 10]\n\n
--trim_tail2 or --trim-tail2\n\t				The number of bases to be trimmed from the end of R2 reads. [default = 10]\n\n
--minlen or --min-read-length\n\t			The minimum length of reads to be included after quality filtering. [default = 30]\n\n
--p or --fb-ploidy\n\t						Ploidy assumed for variant calling. [default = 1 for the first variant calling]\n\n
--Q or --fb-mismatch-base-quality-threshold\n\t	The quality of the mismatched base to be included in the variant calling. [default = 30]\n\n
--m or --fb-min-mapping-quality\n\t			The minimum mapping quality for a read to be included in the variant calling. [default = 30]\n\n
--mc or --fb-min-coverage\n\t				Minimum coverage of a variant to be considered. [default = 5]\n\n
--n or --fb-best-alleles\n\t					Number of most probable alleles to be considered for variant calling. [default = 5]\n\n
--F or --fb-min-alternate-fraction\n\t		Minimal supporting fraction of reads for an alternate allele. [default = 0.2]\n\n
--mvq or --min-variant-quality\n\t			Minimum quality of a variant to be kept. [default = 10]\n\n
--mqa or --min-qual-ao\n\t					Minimum ratio of variant quality and observation count to be kept. [default = 10]\n\n
--sw or --snp-window\n\t						Size of the sliding window to check for SNP-density. [default = 1000]\n\n
--mincov or --minimum-coverage\n\t			The percent of the reference genome that should be covered to include a sample file in the analysis. [default = 95]\n\n
--cw or --clip-window\n\t					The sliding window size used to assess read depth. [default = 100]\n\n
--cs or --clip-step\n\t						The step size of sliding windows. [default = 10]\n\n
--hc or --high-coverage\n\t					The mean read depth is assessed for each sample file. This value is used to multiply the mean read depth and define the read depth threshold of regions to be clipped. [default = 10]\n\n
--sc or --smooth-coverage\n\t				Defines if coverage smoothing should be done. [default = no]\n\n
--smoothw or --smooth-window\n\t				The consecutive window size of random resampling. [default = 100]\n\n
--scount or --smooth-count\n\t				Read count within the window for resampling. [default = 500]\n\n
--g or --gff-file\n\t						The .gff file containing the gene annotations of the reference. If provided the annotation transfer is automatically turned on.\n\n
--pool or --pooled-sequencing\n\t			Valid options are yes or no. Turns on or off the screening of within-host variability. If no such sites are expected it is advised to turn off this feature. [default yes]\n\n\n
+-s or --samples-directory\n\t The input directory containing the sample files listed in list_of_samples.txt.\n\n
+-o or --output-directory\n\t The output directory to store all the output files of the pipeline.\n\n
+-bwa_k or --min-seed-length\n\t The minimum seed length parameter of bwa. Used during short-read alignment. [default = 19]\n\n
+-bwa_A or --matching-score\n\t The matching score parameter of bwa. Used during short-read alignment. [default = 1]\n\n
+-bwa_B or --mismatch-penalty\n\t The mismatch penalty score of bwa. Used during short-read alignment. [default = 4]\n\n
+-bwa_O or --gap-open-penalty\n\t The gap opening penalty score of bwa. Used during short-read alignment. [default = 6]\n\n
+-type or --sequencing-type\n\t The pipeline can use both singe-end and paired-end reads. The default is paired-end (PE). Setting this parameter to SE will look for single-end read files.\n\n
+-trim_front1 or --trim-front1\n\t The number of bases to be trimmed from the beginning of R1 reads. [default = 10]\n\n
+-trim_front2 or --trim-front2\n\t The number of bases to be trimmed from the beginning of R2 reads. [default = 10]\n\n
+-trim_tail1 or --trim-tail1\n\t The number of bases to be trimmed from the end of R1 reads. [default = 10]\n\n
+-trim_tail2 or --trim-tail2\n\t The number of bases to be trimmed from the end of R2 reads. [default = 10]\n\n
+-minlen or --min-read-length\n\t The minimum length of reads to be included after quality filtering. [default = 30]\n\n
+-p or --fb-ploidy\n\t Ploidy assumed for variant calling. [default = 1 for the first variant calling]\n\n
+-Q or --fb-mismatch-base-quality-threshold\n\t The quality of the mismatched base to be included in the variant calling. [default = 30]\n\n
+-m or --fb-min-mapping-quality\n\t The minimum mapping quality for a read to be included in the variant calling. [default = 30]\n\n
+-mc or --fb-min-coverage\n\t Minimum coverage of a variant to be considered. [default = 5]\n\n
+-n or --fb-best-alleles\n\t Number of most probable alleles to be considered for variant calling. [default = 5]\n\n
+-F or --fb-min-alternate-fraction\n\t Minimal supporting fraction of reads for an alternate allele. [default = 0.2]\n\n
+-mvq or --min-variant-quality\n\t Minimum quality of a variant to be kept. [default = 10]\n\n
+-mqa or --min-qual-ao\n\t Minimum ratio of variant quality and observation count to be kept. [default = 10]\n\n
+-sw or --snp-window\n\t Size of the sliding window to check for SNP-density. [default = 1000]\n\n
+-mincov or --minimum-coverage\n\t The percent of the reference genome that should be covered to include a sample file in the analysis. [default = 95]\n\n
+-cw or --clip-window\n\t The sliding window size used to assess read depth. [default = 100]\n\n
+-cs or --clip-step\n\t The step size of sliding windows. [default = 10]\n\n
+-hc or --high-coverage\n\t The mean read depth is assessed for each sample file. This value is used to multiply the mean read depth and define the read depth threshold of regions to be clipped. [default = 10]\n\n
+-sc or --smooth-coverage\n\t Defines if coverage smoothing should be done. [default = no]\n\n
+-smoothw or --smooth-window\n\t The consecutive window size of random resampling. [default = 100]\n\n
+-scount or --smooth-count\n\t Read count within the window for resampling. [default = 500]\n\n
+-g or --gff-file\n\t The .gff file containing the gene annotations of the reference. If provided the annotation transfer is automatically turned on.\n\n
+-pool or --pooled-sequencing\n\t Valid options are yes or no. Turns on or off the screening of within-host variability. If no such sites are expected it is advised to turn off this feature. [default yes]\n\n\n
 
--h or --help\n\t							This help menu.\n\n
--v or --version\n\t							Version information of QVG.\n\n\n
+-h or --help\n\t This help menu.\n\n
+-v or --version\n\t Version information of QVG.\n\n\n
 
 Example:\n
 QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt -s ./fastq_files -o ./output_files -annot yes -g reference_genome.gff3 -np <number_of_threads>\n
@@ -228,11 +228,11 @@ while [[ "$#" -gt 0 ]];
 			shift
 			;;
 		-h|--help)
-			echo "$hm"
+			echo -e "$hm"
 			exit 1
 			;;
 		-v|--version)
-			echo "0.8.1"
+			echo "QVG (Quick Viral genome Genotyper) 0.8.1"
 			exit 1
 			;;
 		*) echo "Unknown parameter passed: $1"
@@ -269,18 +269,20 @@ done
 
 if [[ ${#ref_db} -le 1 ]]; then
 	echo "Please specify reference genome"
+	echo -e "$hm"
 	exit 1
 fi
 
 if [[ ${#slist} -le 1 ]]; then
 	echo "Please specify samples list"
+	echo -e "$hm"
 	exit 1
 fi
 
 #check if input files and ref_dbgenom exist
 
 if [[ ! -d ${outdir} ]]; then
-	echo "Output directory does not exist"
+	echo -e "Output directory does not exist."
 	exit 1
 fi
 
