@@ -173,6 +173,10 @@ Other parameters that can be set and make the fine-tuning of the pipeline possib
 	The mismatch penalty score of bwa. Used during short-read alignment. [default = 4]
 -bwa_O or --gap-open-penalty
 	The gap opening penalty score of bwa. Used during short-read alignment. [default = 6]
+-bwa_E or --gap-extension-penalty
+	The gap extension penalty of bwa. Used during short-read alignment. [default = 1]
+-bwa_L or --clipping-penalty
+	The clipping penalty of bwa. Used during short-read alignment. [default = 5]
 -type or --sequencing-type
 	The pipeline can use both singe-end and paired-end reads. The default is paired-end (PE). Setting this parameter to SE will look for single-end read files.
 -trim_front1 or --trim-front1

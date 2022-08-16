@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail -euo nounset
 
-hm="QVG (Quick Viral genome Genotyper) v.0.8.1\n\n
+hm="QVG (Quick Viral genome Genotyper) v.0.8.5\n\n
 Required input files:\n
  -r or --reference-genome\n\t The reference genome sequence in .fasta format. The reference should contain only one contig.\n\n
  -samples-list or --samples-list\n\t A text file listing sample file basenames to be included in the analysis.\n\n
@@ -13,6 +13,9 @@ Optional parameters:\n
 -bwa_A or --matching-score\n\t The matching score parameter of bwa. Used during short-read alignment. [default = 1]\n\n
 -bwa_B or --mismatch-penalty\n\t The mismatch penalty score of bwa. Used during short-read alignment. [default = 4]\n\n
 -bwa_O or --gap-open-penalty\n\t The gap opening penalty score of bwa. Used during short-read alignment. [default = 6]\n\n
+
+-bwa_E or --gap-extension-penalty\n\t The gap extension penalty of bwa. Used during short-read alignment. [default = 1]\n\n
+-bwa_L or --clipping-penalty\n\t The clipping penalty of bwa. Used during short-read alignment. [default = 5]\n\n
 -type or --sequencing-type\n\t The pipeline can use both singe-end and paired-end reads. The default is paired-end (PE). Setting this parameter to SE will look for single-end read files.\n\n
 -trim_front1 or --trim-front1\n\t The number of bases to be trimmed from the beginning of R1 reads. [default = 10]\n\n
 -trim_front2 or --trim-front2\n\t The number of bases to be trimmed from the beginning of R2 reads. [default = 10]\n\n
@@ -60,6 +63,8 @@ bwa_k=19
 bwa_A=1
 bwa_B=4
 bwa_O=6
+bwa_E=1
+bwa_L=5
 ploidy=1
 minqual=30
 mismatchqual=30
@@ -117,6 +122,14 @@ while [[ "$#" -gt 0 ]];
 			;;
 		-bwa_O|--gap-open-penalty) #gap-open penalty for bwa
 			bwa_O=$2
+			shift
+			;;
+		-bwa_E|--gap-extension-penalty)
+			bwa_E=$2
+			shift
+			;;
+		-bwa_L|--clipping-penalty)
+			bwa_L=$2
 			shift
 			;;
 		-samples-list|--samples-list) #samples list MANDATORY
@@ -232,7 +245,7 @@ while [[ "$#" -gt 0 ]];
 			exit 1
 			;;
 		-v|--version)
-			echo "QVG (Quick Viral genome Genotyper) 0.8.1"
+			echo "QVG (Quick Viral genome Genotyper) 0.8.5"
 			exit 1
 			;;
 		*) echo "Unknown parameter passed: $1"
@@ -248,7 +261,7 @@ cat <<'END_FIGLET'
 | | | \ \ / / |  _
 | |_| |\ V /| |_| |
  \__\_\ \_/  \____|
-             v0.8.1
+             v0.8.5
 END_FIGLET
 
 echo "Run started at $(date)"
@@ -320,7 +333,7 @@ if [[ "$type" == "PE" ]]; then
 			fastp -i "$r1" -I "$r2" -o "${outdir}"/"${i}"/"${i}"_R1.fq.gz -O "${outdir}"/"${i}"/"${i}"_R2.fq.gz -5 20 -3 20 -W 10 -M 20 --detect_adapter_for_pe -w "$np" -x -f "$tf1" -F "$tf2" -t "$tt1" -T "$tt2" -l "$ml" -h "${outdir}"/"${i}"/"${i}"_filter.html -j "${outdir}"/"${i}"/"${i}"_filter.json
 
 			echo "##### Aligning ${i} to $ref_db #####"
-			bwa mem -t "$np" -k "$bwa_k" -A "$bwa_A" -B "$bwa_B" -O "$bwa_O" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz "${outdir}"/"${i}"/"${i}"_R2.fq.gz 2> /dev/null |\
+			bwa mem -t "$np" -k "$bwa_k" -A "$bwa_A" -B "$bwa_B" -O "$bwa_O" -E "$bwa_E" -L "$bwa_L" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz "${outdir}"/"${i}"/"${i}"_R2.fq.gz 2> /dev/null |\
 			samtools view -h -b -u -@ "$np" |\
 			samtools sort -@ "$np" > "${outdir}"/"${i}"/"${i}".bam
 		else
@@ -346,7 +359,7 @@ elif [[ "$type" == "SE" ]]; then
 			fastp -i "$r1" -o "${outdir}"/"${i}"/"${i}"_R1.fq.gz -5 20 -3 20 -W 10 -M 20 -w "$np" -x -f 10 -t 1 -l 30 -h "${outdir}"/"${i}"/"${i}"_filter.html -j "${outdir}"/"${i}"/"${i}"_filter.json
 
 			echo "##### Aligning ${i} to $ref_db #####"
-			bwa mem -t "$np" -k "$bwa_k" -A "$bwa_A" -B "$bwa_B" -O "$bwa_O" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz 2> /dev/null |\
+			bwa mem -t "$np" -k "$bwa_k" -A "$bwa_A" -B "$bwa_B" -O "$bwa_O" -E "$bwa_E" -L "$bwa_L" -R "@RG\tID:$i\tSM:$i\tPL:Illumina" "$ref_db" "${outdir}"/"${i}"/"${i}"_R1.fq.gz 2> /dev/null |\
 			samtools view -h -b -u -@ "$np" |\
 			samtools sort -@ "$np" > "${outdir}"/"${i}"/"${i}".bam
 		else
