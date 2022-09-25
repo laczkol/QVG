@@ -112,6 +112,8 @@ NOTE: Copying the above code-block will install the dependencies one by one. Ins
 
 After cloning the repository and installing the dependencies, it is advised to check if all dependencies can be found correctly and if the pipeline works as expected. The repository contains a small subset of SARS-CoV2 sequencing reads and a reference genome with the corresponding annotation. To check if the pipeline works using these test data, please, run `./run_test.sh` from the directory where the repository was cloned. If the output correctly tells when the run ended, QVG should work correctly on real data. If a line starting with `Run ended` is not output to the screen, the pipeline stopped somewhere during the analysis. Additionally, this test looks for some main output files of the pipeline, namely, the consensus genome sequence, the sites variable within-host, and the transferred genome annotation. If the test tells all these files were found, the installation of QVG is correct; otherwise, the availability of dependencies should be double-checked.
 
+We also provide an Apptainer (formerly Singularity) container (qvg.sif) that contains all dependencies preinstalled and only requires Apptainer to run the pipeline. For the advantages of using such a software container see Kurtzer et al., 2017.
+
 ## Details
 
 The pipeline can be parametrized from the command line. The two mandatory options to run the pipeline are the following:
@@ -253,6 +255,12 @@ A typical command to run `QVG.sh` including the annotation step, would look like
 
 ````
 QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt -s ./fastq_files -o ./output_files -annot yes -g reference_genome.gff3 -np <number_of_threads>
+````
+
+Using Apptainer, the `QVG.sh` should be run with the following command:
+
+````
+apptainer exec /PATH/TO/qvg.sif QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt -s ./fastq_files -o ./output_files -annot yes -g reference_genome.gff3 -np <number_of_threads>
 ````
 
 The default values generally work well with AmpliSeq data obtained by paired-end sequencing using Illumina Miseq. 
