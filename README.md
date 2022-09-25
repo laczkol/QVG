@@ -4,7 +4,7 @@
 
 If you find this pipeline useful, please, do not forget to credit our work by citing this paper:
 
-Varadi, A., Kaszab, E., Kardos, G., Prepost, E., Szarka, K., & Laczko, L. (2022). Rapid genotyping of viral samples using Illumina short-read sequencing data. *bioRxiv preprint*. https://doi.org/10.1101/2022.03.21.485184
+Váradi, A., Kaszab, E., Kardos, G., Prépost, E., Szarka, K., & Laczkó, L. (2022). Rapid genotyping of targeted viral samples using Illumina short-read sequencing data. PLOS ONE, 17(9), e0274414. https://doi.org/10.1371/journal.pone.0274414
 
 Feedback is very welcome.
 
