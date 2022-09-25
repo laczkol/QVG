@@ -45,7 +45,7 @@ Optional parameters:\n
 -v or --version\n\t Version information of QVG.\n\n\n
 
 Example:\n
-QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt -s ./fastq_files -o ./output_files -annot yes -g reference_genome.gff3 -np <number_of_threads>\n
+apptainer exec qvg.sif QVG.sh -r reference_genome.fasta -samples-list list_of_samples.txt -s ./fastq_files -o ./output_files -annot yes -g reference_genome.gff3 -np <number_of_threads>\n
 "
 
 cdir=$(pwd)
