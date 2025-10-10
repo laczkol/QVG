@@ -101,7 +101,7 @@ conda install -y -c bioconda bcftools
 conda install -y -c bioconda vcflib
 conda install -y -c bioconda vcftools
 conda install -y -c bioconda bedtools
-conda install -y -c bioconda liftoff minimap=2.17
+conda install -y -c bioconda liftoff minimap2=2.17
 conda install -y -c conda-forge parallel
 conda install -y -c bioconda bioawk
 ```
